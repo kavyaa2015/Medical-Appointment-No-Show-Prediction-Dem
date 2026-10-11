@@ -22,5 +22,7 @@ ENV/
 .DS_Store
 Thumbs.db
 
+data/raw/
+
 # Output cache / scratch
 scratch/
