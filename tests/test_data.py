@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from pathlib import Path
 
 from src.data import (
     clean_dataset,
@@ -65,6 +66,8 @@ def test_engineer_features():
 
 
 def test_prepare_classification_data_no_leakage():
+    if not Path('data/raw.csv').exists():
+        pytest.skip("Private appointment-level dataset is not included in the repository.")
     X_train, X_test, y_train, y_test = prepare_classification_data('data/raw.csv', test_size=0.2, random_state=42)
     assert len(X_train) > 0
     assert len(X_test) > 0

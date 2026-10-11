@@ -24,6 +24,7 @@ from sklearn.metrics import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
 
 from src.data import (
     CATEGORICAL_FEATURES,
@@ -117,16 +118,24 @@ def train_and_compare_models(
             ('classifier', clf)
         ])
 
+        # Select the operating threshold on a validation partition only.  The
+        # held-out test set remains untouched until final evaluation.
+        X_fit, X_validation, y_fit, y_validation = train_test_split(
+            X_train, y_train, test_size=0.20, random_state=42, stratify=y_train
+        )
+        pipe.fit(X_fit, y_fit)
+        probs_validation = pipe.predict_proba(X_validation)[:, 1]
+
+        # Tune on validation predictions, never on fitted training predictions.
+        threshold_candidates = np.linspace(0.20, 0.80, 61)
+        validation_f1s = [f1_score(y_validation, (probs_validation >= t).astype(int)) for t in threshold_candidates]
+        best_threshold = float(threshold_candidates[np.argmax(validation_f1s)])
+
+        # Refit the selected pipeline on all training data before one final
+        # evaluation on the held-out test set.
         pipe.fit(X_train, y_train)
         probs_test = pipe.predict_proba(X_test)[:, 1]
-        probs_train = pipe.predict_proba(X_train)[:, 1]
-
         roc_auc = roc_auc_score(y_test, probs_test)
-
-        # Tune classification threshold on training set to maximize F1
-        threshold_candidates = np.linspace(0.20, 0.80, 61)
-        train_f1s = [f1_score(y_train, (probs_train >= t).astype(int)) for t in threshold_candidates]
-        best_threshold = float(threshold_candidates[np.argmax(train_f1s)])
 
         # Test set evaluation with tuned threshold
         preds_tuned = (probs_test >= best_threshold).astype(int)
@@ -150,6 +159,7 @@ def train_and_compare_models(
             'accuracy_tuned': float(acc_tuned),
             'confusion_matrix_tuned': cm_tuned,
             'optimal_threshold': best_threshold,
+            'threshold_selection': 'stratified validation split within training data',
             'f1_score_default': float(f1_def),
             'precision_default': float(prec_def),
             'recall_default': float(rec_def),

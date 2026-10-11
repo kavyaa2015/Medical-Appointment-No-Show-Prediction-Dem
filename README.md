@@ -44,11 +44,11 @@ The University of Vale do Itajaí Center of Specialization in Physical and Intel
 - **Target Distribution**: `no` (Attended) = 74,761 (68.22%), `yes` (No-Show) = 34,832 (31.78%).
 - **Duplicate Records**: 36 exact duplicates removed during cleaning.
 - **Missing Data Strategy**:
-  - `age` (~20.9% missing): Imputed conditionally using age-bracket indicators (`under_12`, `over_60`) + `age_is_missing` flag.
+- `age` (~20.9% missing): Median-imputed inside the fitted model pipeline; `age_is_missing` preserves the missingness signal. For display-only age bands, a temporary value of 18 is used.
   - `specialty` (~18.4% missing): Retained as explicit `'Missing'` category (demonstrates a 40.6% no-show rate!).
   - `disability` (~15.2% missing/whitespace): Standardized to `'Missing'`, `'intellectual'`, or `'motor'`.
   - `place` (~10.5% missing): Standardized to the 11 regional AMFRI municipalities + `'OTHER'` + `'MISSING'`.
-  - `weather` (~2.0% missing): Imputed from same-day records (0 calendar days completely missing weather).
+- `weather` (~2.0% missing): Median-imputed inside the fitted model pipeline. The daily forecasting table uses forward/backward fill only after aggregation to preserve a continuous calendar.
 
 ### Data Dictionary
 | Column | Type | Description |
@@ -108,7 +108,7 @@ medical/
 │   └── test_app.py                # App configuration smoke tests
 ├── app.py                         # 2-tab interactive Streamlit dashboard
 ├── conftest.py                    # Pytest configuration
-├── requirements.txt               # Pinned dependencies
+├── requirements.txt               # Minimum tested dependency versions
 ├── .gitignore                     # Git ignore rules
 └── README.md                      # Comprehensive documentation
 ```
@@ -136,8 +136,8 @@ medical/
 
 ### C. Demand Forecasting
 - Aggregated appointments by date across the complete 498-day continuous timeline.
-- Chronological 80/20 train/test split (387 training days, 97 test days) ensuring strictly no future data leakage.
-- Lag features (`lag_1`, `lag_2`, `lag_7`, `lag_14`, `lag_21`) and rolling statistics (`rolling_mean_7`, `rolling_mean_14`, `rolling_mean_28`) shifted by at least 1 day.
+- Chronological 80/20 train/test split after the 21-day lag warm-up (381 training days, 96 test days), ensuring strictly no future data leakage.
+- Lag features (`lag_1`, `lag_2`, `lag_3`, `lag_7`, `lag_14`, `lag_21`), shifted rolling statistics (7, 14, and 28 days), calendar fields, and daily weather aggregates are used by the tree models.
 - Log-scale target stabilization: $y_{\text{log}} = \log(1 + y)$ to prevent variance explosion during low-volume days.
 - Evaluated approaches:
   1. **Seasonal Naive (Lag 7)** & **7-Day Moving Average**
@@ -154,23 +154,25 @@ medical/
 ### 1. Classification Model Comparison (Imbalanced Test Set: N = 21,912)
 | Model | ROC-AUC | F1-Score (Tuned) | Optimal Threshold | Precision | Recall | Accuracy |
 |---|---|---|---|---|---|---|
-| **Logistic Regression** | 0.7622 | 0.6260 | 0.52 | 0.5401 | 0.7445 | 0.7208 |
-| **Random Forest** | 0.7817 | 0.6336 | 0.55 | 0.5842 | 0.6920 | 0.7512 |
-| **XGBoost Classifier** 🏆 | **0.7868** | **0.6397** | 0.57 | **0.5891** | **0.7001** | **0.7564** |
+| **Logistic Regression** | 0.7622 | 0.6260 | 0.52 | 0.5029 | 0.8287 | 0.6851 |
+| **Random Forest** | 0.7817 | 0.6334 | 0.45 | 0.5028 | 0.8557 | 0.6851 |
+| **XGBoost Classifier** 🏆 | **0.7868** | **0.6392** | 0.46 | **0.5150** | **0.8424** | **0.6977** |
 
 > **Audit against PDF Targets**:
 > - **ROC-AUC Target (> 0.75)**: **ACHIEVED (0.7868)**.
-> - **F1-Score Target (> 0.70)**: Actual test F1 reached **0.6397** (default) / **0.6330** (tuned threshold). Because the real-world dataset exhibits complex behavioral noise and anonymization, F1 is constrained to ~0.64. As mandated by guidelines, metrics are honest and un-fabricated.
+> - **F1-Score Target (> 0.70)**: Not achieved. The positive-class test F1 is **0.6392** with a threshold selected on a validation partition (the default-threshold F1 is 0.6397). Macro and weighted F1 must be reported separately if used; they are not substitutes for the positive-class target.
 
-### 2. Time Series Demand Forecasting (Chronological Test Set: N = 97 Days)
+### 2. Time Series Demand Forecasting (Chronological Test Set: N = 96 Days)
 | Forecasting Approach | MAE | RMSE | R² Score | sMAPE (%) | Safe MAPE (%) |
 |---|---|---|---|---|---|
 | **Seasonal Naive (Lag 7)** | 180.08 | 343.47 | -0.4906 | 86.09% | 3879.7% |
 | **7-Day Moving Average** | 165.44 | 263.35 | 0.1237 | 79.89% | 2867.1% |
 | **SARIMAX (1,1,1)(1,0,1,7)** | 212.33 | 270.69 | 0.0742 | 126.20% | 4722.9% |
-| **XGBoost Regressor (Log)** 🏆 | **130.95** | **254.23** | **0.1833** | **105.09%** | **952.5%** |
+| **XGBoost Regressor (Log)** | 79.77 | 173.60 | 0.6192 | 60.28% | 116.53% |
+| **Random Forest Regressor (Log)** | **78.13** | **169.35** | **0.6376** | **55.63%** | **93.71%** |
 
 > **Analysis of Forecasting Metrics**:
+> The PDF targets of MAPE <20% and R² >0.65 are **not achieved**. Standard MAPE is unstable on low-volume days; use the saved sMAPE, WAPE, and MAPE-at-volume≥10 diagnostics alongside MAE and R². The April 2021 spike and low-volume tail require source-data validation before causal interpretation.
 > In the final months of the dataset (April–May 2021), clinical appointment volume sharply contracted due to external healthcare constraints in southern Brazil during the 2021 COVID wave (many single-digit appointment days). On days with 1–3 appointments, standard MAPE mathematically explodes. Symmetric MAPE (sMAPE) and MAE demonstrate that the tree-based model substantially outperforms both naive moving averages and SARIMAX.
 
 ---
@@ -231,6 +233,8 @@ pip install -r requirements.txt
 ```powershell
 python run_pipeline.py
 ```
+
+`data/raw.csv` is intentionally excluded from Git because it contains appointment-level data. The repository includes `data/daily_series.csv`, a privacy-preserving aggregate that supports the overall demand forecaster after cloning. To retrain models or use specialty/location filters, obtain the authorized source dataset and place it at `data/raw.csv`.
 
 ### 4. Launch Streamlit Application
 ```powershell

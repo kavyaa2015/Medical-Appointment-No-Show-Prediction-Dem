@@ -22,7 +22,10 @@ ENV/
 .DS_Store
 Thumbs.db
 
+# Appointment-level source data is private. The committed daily aggregate is
+# intentionally retained so the overall forecasting demo works after cloning.
 data/raw/
+data/raw.csv
 
 # Output cache / scratch
 scratch/

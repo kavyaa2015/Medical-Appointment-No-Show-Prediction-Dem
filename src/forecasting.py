@@ -14,6 +14,11 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 from xgboost import XGBRegressor
 from sklearn.ensemble import RandomForestRegressor
 
+WEATHER_FEATURES = [
+    'average_temp_day', 'max_temp_day', 'average_rain_day',
+    'max_rain_day', 'storm_day_before'
+]
+
 
 def build_daily_time_series(
     df: pd.DataFrame,
@@ -101,6 +106,14 @@ def engineer_forecasting_features(daily_df: pd.DataFrame) -> pd.DataFrame:
     ts_df['log_rolling_mean_7'] = log_counts.shift(1).rolling(7, min_periods=1).mean()
     ts_df['log_rolling_std_7'] = log_counts.shift(1).rolling(7, min_periods=1).std().fillna(0)
     ts_df['log_rolling_mean_14'] = log_counts.shift(1).rolling(14, min_periods=1).mean()
+    ts_df['log_rolling_mean_28'] = log_counts.shift(1).rolling(28, min_periods=1).mean()
+
+    # Weather is an exogenous feature, available as a daily aggregate.  Any
+    # residual gaps are explicitly filled from the historical median.
+    for column in WEATHER_FEATURES:
+        if column not in ts_df:
+            ts_df[column] = 0.0
+        ts_df[column] = ts_df[column].fillna(ts_df[column].median()).fillna(0.0)
 
     return ts_df
 
@@ -108,7 +121,8 @@ def engineer_forecasting_features(daily_df: pd.DataFrame) -> pd.DataFrame:
 FORECAST_FEATURES = [
     'dayofweek', 'day', 'month', 'quarter', 'dayofyear', 'is_weekend',
     'log_lag_1', 'log_lag_2', 'log_lag_3', 'log_lag_7', 'log_lag_14', 'log_lag_21',
-    'log_rolling_mean_7', 'log_rolling_std_7', 'log_rolling_mean_14'
+    'log_rolling_mean_7', 'log_rolling_std_7', 'log_rolling_mean_14',
+    'log_rolling_mean_28', *WEATHER_FEATURES
 ]
 
 
@@ -125,12 +139,19 @@ def evaluate_forecast(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float
     # Symmetric MAPE (robust percentage metric bounded between 0 and 200%)
     denom_smape = np.abs(y_true) + np.abs(y_pred) + 1e-6
     smape = float(np.mean(2.0 * np.abs(y_true - y_pred) / denom_smape) * 100)
+    wape = float(np.sum(np.abs(y_true - y_pred)) / max(np.sum(np.abs(y_true)), 1.0) * 100)
+    volume_mask = y_true >= 10
+    mape_volume_10 = float(
+        np.mean(np.abs(y_true[volume_mask] - y_pred[volume_mask]) / y_true[volume_mask]) * 100
+    ) if volume_mask.any() else float('nan')
 
     return {
         'mae': float(mae),
         'rmse': float(rmse),
         'mape': float(mape),
         'smape': float(smape),
+        'wape': wape,
+        'mape_volume_at_least_10': mape_volume_10,
         'r2': float(r2)
     }
 
@@ -185,6 +206,16 @@ def train_and_evaluate_forecasting(
     results['XGBoost Regressor'] = evaluate_forecast(y_test, pred_xgb)
     models['XGBoost Regressor'] = xgb_reg
 
+    # A genuine non-linear ensemble comparator, not another baseline.
+    random_forest = RandomForestRegressor(
+        n_estimators=300, min_samples_leaf=2, max_features=0.8,
+        random_state=42, n_jobs=-1
+    )
+    random_forest.fit(train_df[FORECAST_FEATURES], y_train_log)
+    pred_rf = np.clip(np.expm1(random_forest.predict(test_df[FORECAST_FEATURES])), a_min=0, a_max=None)
+    results['Random Forest Regressor'] = evaluate_forecast(y_test, pred_rf)
+    models['Random Forest Regressor'] = random_forest
+
     # Approach 3: SARIMAX Model
     try:
         sarima_order = (1, 1, 1)
@@ -204,7 +235,7 @@ def train_and_evaluate_forecasting(
         results['SARIMAX'] = {'error': str(e), 'mae': 999.0, 'rmse': 999.0, 'mape': 999.0, 'smape': 999.0, 'r2': -9.0}
 
     # Best model selection by lowest MAE
-    model_candidates = [k for k in ['XGBoost Regressor', 'SARIMAX', '7-Day Moving Average'] if 'error' not in results[k]]
+    model_candidates = [k for k in ['XGBoost Regressor', 'Random Forest Regressor', 'SARIMAX'] if 'error' not in results[k]]
     best_model_name = min(model_candidates, key=lambda k: results[k]['mae'])
     best_model = models.get(best_model_name, None)
 
@@ -212,10 +243,23 @@ def train_and_evaluate_forecasting(
     test_eval_df = test_df[['appointment_date', 'appointment_count']].copy()
     test_eval_df['Seasonal_Naive'] = pred_baseline
     test_eval_df['XGBoost'] = pred_xgb
+    test_eval_df['RandomForest'] = pred_rf
     if 'SARIMAX' in models:
         test_eval_df['SARIMAX'] = pred_sarima
 
     return results, best_model_name, best_model, test_eval_df
+
+
+def build_weather_profile(daily_df: pd.DataFrame) -> Dict[str, Dict[str, float]]:
+    """Build a day-of-year climatology for future dates without observed weather."""
+    available = [column for column in WEATHER_FEATURES if column in daily_df]
+    if not available:
+        return {}
+    profile = daily_df.assign(dayofyear=daily_df['appointment_date'].dt.dayofyear)
+    return {
+        str(day): {column: float(value) for column, value in values.items()}
+        for day, values in profile.groupby('dayofyear')[available].median().iterrows()
+    }
 
 
 def save_forecasting_artifact(
@@ -259,6 +303,11 @@ def forecast_future_demand(
     future_records = []
 
     running_history = history[['appointment_date', 'appointment_count']].copy()
+    weather_profile = artifact.get('metadata', {}).get('weather_profile', {})
+    historical_weather = {
+        column: float(history[column].median()) if column in history else 0.0
+        for column in WEATHER_FEATURES
+    }
 
     for target_date in future_dates:
         # Build lag features dynamically from running history
@@ -282,6 +331,8 @@ def forecast_future_demand(
         log_rolling_7 = np.mean(last_log_counts[-7:]) if len(last_log_counts) >= 7 else np.mean(last_log_counts)
         log_rolling_std_7 = np.std(last_log_counts[-7:]) if len(last_log_counts) >= 7 else 0.0
         log_rolling_14 = np.mean(last_log_counts[-14:]) if len(last_log_counts) >= 14 else np.mean(last_log_counts)
+        log_rolling_28 = np.mean(last_log_counts[-28:]) if len(last_log_counts) >= 28 else np.mean(last_log_counts)
+        weather = weather_profile.get(str(dayofyear), historical_weather)
 
         row_feat = {
             'dayofweek': dayofweek,
@@ -293,10 +344,19 @@ def forecast_future_demand(
             'log_rolling_mean_7': log_rolling_7,
             'log_rolling_std_7': log_rolling_std_7,
             'log_rolling_mean_14': log_rolling_14,
+            'log_rolling_mean_28': log_rolling_28,
             **log_lags
         }
+        row_feat.update({column: float(weather.get(column, historical_weather[column])) for column in WEATHER_FEATURES})
 
-        X_step = pd.DataFrame([row_feat])[FORECAST_FEATURES]
+        # Artifacts written before new feature releases remain usable.  New
+        # artifacts record the complete schema; legacy models receive only
+        # the columns on which they were trained.
+        expected_features = getattr(model, 'feature_names_in_', None)
+        if expected_features is None and hasattr(model, 'get_booster'):
+            expected_features = model.get_booster().feature_names
+        expected_features = list(expected_features) if expected_features is not None else FORECAST_FEATURES
+        X_step = pd.DataFrame([row_feat]).reindex(columns=expected_features, fill_value=0.0)
 
         if hasattr(model, 'predict'):
             pred_log = model.predict(X_step)[0]

@@ -24,6 +24,7 @@ from src.classification import (
 )
 from src.forecasting import (
     build_daily_time_series,
+    build_weather_profile,
     train_and_evaluate_forecasting,
     save_forecasting_artifact,
 )
@@ -90,7 +91,7 @@ def run():
     plt.figure(figsize=(8, 4))
     heat_rates = feat_df.groupby('heat_intensity')['target'].agg(['mean', 'count']).reset_index().sort_values('mean', ascending=False)
     plt.bar(heat_rates['heat_intensity'], heat_rates['mean'] * 100, color='#e377c2')
-    plt.axvline(31.8, color='red', linestyle='--', label='Average No-Show')
+    plt.axhline(feat_df['target'].mean() * 100, color='red', linestyle='--', label='Average No-Show')
     plt.title('No-Show Rate (%) by Environmental Heat Intensity')
     plt.ylabel('No-Show Rate (%)')
     plt.tight_layout()
@@ -174,6 +175,7 @@ def run():
         metadata={
             'metrics': ts_results[best_ts_name],
             'all_models': ts_results
+            ,'weather_profile': build_weather_profile(daily_all)
         },
         filepath='models/demand_forecast_model.joblib'
     )

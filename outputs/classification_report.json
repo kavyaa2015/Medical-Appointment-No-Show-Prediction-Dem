@@ -16,48 +16,51 @@
       ]
     ],
     "optimal_threshold": 0.52,
+    "threshold_selection": "stratified validation split within training data",
     "f1_score_default": 0.6252662974009374,
     "precision_default": 0.4970364098221846,
     "recall_default": 0.8426643697961528
   },
   "Random Forest": {
     "roc_auc": 0.7817380391209483,
-    "f1_score_tuned": 0.6335895117540687,
-    "precision_tuned": 0.5224603914259087,
-    "recall_tuned": 0.804766006316394,
-    "accuracy_tuned": 0.7040890836071559,
+    "f1_score_tuned": 0.6334077143767931,
+    "precision_tuned": 0.5027834008097166,
+    "recall_tuned": 0.8557278208440999,
+    "accuracy_tuned": 0.6851040525739321,
     "confusion_matrix_tuned": [
       [
-        9822,
-        5124
+        9051,
+        5895
       ],
       [
-        1360,
-        5606
+        1005,
+        5961
       ]
     ],
-    "optimal_threshold": 0.55,
+    "optimal_threshold": 0.45000000000000007,
+    "threshold_selection": "stratified validation split within training data",
     "f1_score_default": 0.6351212661373089,
     "precision_default": 0.5091365722698536,
     "recall_default": 0.8439563594602354
   },
   "XGBoost": {
     "roc_auc": 0.7867642490859716,
-    "f1_score_tuned": 0.6329737335834896,
-    "precision_tuned": 0.5349851337958375,
-    "recall_tuned": 0.7749066896353718,
-    "accuracy_tuned": 0.7143117926250456,
+    "f1_score_tuned": 0.6392156862745098,
+    "precision_tuned": 0.5150078988941548,
+    "recall_tuned": 0.8423772609819121,
+    "accuracy_tuned": 0.6976998904709748,
     "confusion_matrix_tuned": [
       [
-        10254,
-        4692
+        9420,
+        5526
       ],
       [
-        1568,
-        5398
+        1098,
+        5868
       ]
     ],
-    "optimal_threshold": 0.5700000000000001,
+    "optimal_threshold": 0.4600000000000001,
+    "threshold_selection": "stratified validation split within training data",
     "f1_score_default": 0.6396855276270623,
     "precision_default": 0.5206380677721701,
     "recall_default": 0.829313809933965

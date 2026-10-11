@@ -99,6 +99,22 @@ def get_dataset():
     return cleaned
 
 
+@st.cache_data
+def get_daily_series():
+    """Load the privacy-preserving aggregate shipped with the repository."""
+    path = 'data/daily_series.csv'
+    if not os.path.exists(path):
+        return None
+    series = pd.read_csv(path, parse_dates=['appointment_date'])
+    return series.sort_values('appointment_date').reset_index(drop=True)
+
+
+def metric_value(metrics, key, format_spec):
+    """Display only a metric saved by the training run; never invent a fallback."""
+    value = metrics.get(key)
+    return format(value, format_spec) if value is not None else "Unavailable"
+
+
 # App Header
 st.title("🏥 CER Rehabilitation Center Operations Management")
 st.markdown(
@@ -136,9 +152,9 @@ with tab_pred:
         with col_top1:
             st.metric("Active Model", best_name)
         with col_top2:
-            st.metric("Test ROC-AUC", f"{metrics.get('roc_auc', 0.77):.4f}")
+            st.metric("Test ROC-AUC", metric_value(metrics, 'roc_auc', '.4f'))
         with col_top3:
-            st.metric("Tuned F1-Score", f"{metrics.get('f1_score_tuned', 0.71):.4f}")
+            st.metric("Validation-selected F1", metric_value(metrics, 'f1_score_tuned', '.4f'))
         with col_top4:
             st.metric("Default Threshold", f"{optimal_t:.2f}")
 
@@ -158,7 +174,8 @@ with tab_pred:
                     index=0
                 )
                 gender = st.selectbox("Gender", options=['M', 'F', 'I'], index=0)
-                age = st.number_input("Patient Age", min_value=1, max_value=115, value=25)
+                age_unknown = st.checkbox("Age unknown", value=False)
+                age = st.number_input("Patient Age", min_value=1, max_value=115, value=25, disabled=age_unknown)
 
             with c2:
                 place = st.selectbox(
@@ -175,9 +192,10 @@ with tab_pred:
                 sms_received = st.selectbox("SMS Reminder Sent", options=[1, 0], format_func=lambda x: "Yes" if x == 1 else "No", index=0)
 
             with c4:
+                appointment_date = st.date_input("Appointment date")
                 threshold_cutoff = st.slider("Risk Cutoff Threshold", min_value=0.20, max_value=0.80, value=float(optimal_t), step=0.01)
-                under_12 = 1 if age < 12 else 0
-                over_60 = 1 if age >= 60 else 0
+                under_12 = 0 if age_unknown else int(age < 12)
+                over_60 = 0 if age_unknown else int(age >= 60)
 
             st.subheader("2. Health Conditions & Social Assistance")
             h1, h2, h3, h4, h5 = st.columns(5)
@@ -210,11 +228,14 @@ with tab_pred:
             submit_btn = st.form_submit_button("⚡ Predict No-Show Risk", use_container_width=True)
 
         if submit_btn:
+            if max_temp < avg_temp:
+                st.error("Maximum temperature must be greater than or equal to average temperature.")
+                st.stop()
             with st.spinner("Analyzing appointment parameters and scoring risk..."):
                 input_df = pd.DataFrame([{
                     'specialty': specialty,
                     'gender': gender,
-                    'age': float(age),
+                    'age': np.nan if age_unknown else float(age),
                     'place': place,
                     'place_clean': place,
                     'disability': disability,
@@ -237,7 +258,7 @@ with tab_pred:
                     'rain_intensity': rain_intensity,
                     'rainy_day_before': int(rain_day_before),
                     'storm_day_before': int(storm_day_before),
-                    'appointment_date_continuous': pd.Timestamp.now().strftime('%Y-%m-%d')
+                    'appointment_date_continuous': pd.Timestamp(appointment_date).strftime('%Y-%m-%d')
                 }])
 
                 with LatencyTimer() as timer:
@@ -319,9 +340,10 @@ with tab_fore:
 
     fore_artifact = get_forecasting_artifact()
     df_data = get_dataset()
+    shipped_daily_series = get_daily_series()
 
-    if fore_artifact is None or df_data is None:
-        st.warning("⚠️ Forecasting artifact (`models/demand_forecast_model.joblib`) or dataset not ready. Please run the training pipeline.")
+    if fore_artifact is None or shipped_daily_series is None:
+        st.warning("⚠️ Forecasting artifact or `data/daily_series.csv` is unavailable. Restore the repository files or run the training pipeline.")
     else:
         meta_ts = fore_artifact.get('metadata', {})
         best_fore_name = fore_artifact.get('model_name', 'Forecasting Model')
@@ -331,33 +353,39 @@ with tab_fore:
         with m1:
             st.metric("Forecasting Engine", best_fore_name)
         with m2:
-            st.metric("Test MAE", f"{ts_metrics.get('mae', 82.5):.1f}")
+            st.metric("Test MAE", metric_value(ts_metrics, 'mae', '.1f'))
         with m3:
-            st.metric("Test RMSE", f"{ts_metrics.get('rmse', 179.8):.1f}")
+            st.metric("Test RMSE", metric_value(ts_metrics, 'rmse', '.1f'))
         with m4:
-            st.metric("Test R² Score", f"{ts_metrics.get('r2', 0.60):.4f}")
+            st.metric("Test R² Score", metric_value(ts_metrics, 'r2', '.4f'))
         with m5:
-            st.metric("Safe MAPE / sMAPE", f"{ts_metrics.get('smape', 58.2):.1f}%")
+            st.metric("Test sMAPE", f"{metric_value(ts_metrics, 'smape', '.1f')}%" if ts_metrics.get('smape') is not None else "Unavailable")
 
         st.markdown("---")
 
         fc1, fc2, fc3 = st.columns(3)
         with fc1:
-            spec_options = ['All'] + sorted(list(df_data['specialty'].dropna().unique()))
-            selected_specialty = st.selectbox("Filter Specialty", options=spec_options, index=0)
+            spec_options = ['All'] + sorted(list(df_data['specialty'].dropna().unique())) if df_data is not None else ['All']
+            selected_specialty = st.selectbox("Filter Specialty", options=spec_options, index=0, disabled=df_data is None)
         with fc2:
-            loc_options = ['All'] + TOP_MUNICIPALITIES
-            selected_location = st.selectbox("Filter Location / Municipality", options=loc_options, index=0)
+            loc_options = ['All'] + TOP_MUNICIPALITIES if df_data is not None else ['All']
+            selected_location = st.selectbox("Filter Location / Municipality", options=loc_options, index=0, disabled=df_data is None)
         with fc3:
             horizon = st.slider("Forecast Horizon (Days Ahead)", min_value=7, max_value=30, value=14, step=7)
 
         run_forecast_btn = st.button("🚀 Generate Demand Forecast", use_container_width=True)
+        if df_data is None:
+            st.caption("Overall forecasting uses the included daily aggregate. Add local `data/raw.csv` and rerun the pipeline to enable specialty and location filters.")
 
         # Build daily series
-        daily_series = build_daily_time_series(df_data, specialty=selected_specialty, location=selected_location)
+        daily_series = (
+            build_daily_time_series(df_data, specialty=selected_specialty, location=selected_location)
+            if df_data is not None else shipped_daily_series
+        )
 
-        with LatencyTimer() as f_timer:
-            future_forecast = forecast_future_demand(fore_artifact, daily_series, horizon_days=horizon)
+        with st.spinner("Generating recursive demand forecast..."):
+            with LatencyTimer() as f_timer:
+                future_forecast = forecast_future_demand(fore_artifact, daily_series, horizon_days=horizon)
 
         f_latency_ms = f_timer.elapsed_ms
 
