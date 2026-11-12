@@ -29,11 +29,11 @@
         "r2": 0.19085723161697388
       },
       "Random Forest Regressor": {
-        "mae": 115.63808877288541,
+        "mae": 115.6380887728854,
         "rmse": 238.1807801520553,
-        "mape": 731.2366236325798,
+        "mape": 731.2366236325796,
         "smape": 97.3364404946068,
-        "wape": 59.92257649895822,
+        "wape": 59.922576498958215,
         "mape_volume_at_least_10": 56.189848327632774,
         "r2": 0.2831893245746899
       },
@@ -97,6 +97,634 @@
   },
   "best_model": "Random Forest Regressor",
   "selection_metric": "recursive_14_day_rolling_origin.wape",
+  "additional_metrics": {
+    "weekly_aggregate_one_step_ahead": {
+      "Seasonal Naive (Lag 7)": {
+        "weeks": 15,
+        "r2": -0.4561888049153999,
+        "wape": 81.09683687790132
+      },
+      "7-Day Moving Average": {
+        "weeks": 15,
+        "r2": 0.6496418166034894,
+        "wape": 42.56566061596829
+      },
+      "XGBoost Regressor": {
+        "weeks": 15,
+        "r2": 0.30649155378341675,
+        "wape": 57.5076457273493
+      },
+      "Random Forest Regressor": {
+        "weeks": 15,
+        "r2": 0.39191319552768134,
+        "wape": 48.04103502910078
+      },
+      "SARIMAX": {
+        "weeks": 15,
+        "r2": 0.6443460866287984,
+        "wape": 47.965414901328316
+      }
+    },
+    "days_with_at_least_10_appointments": {
+      "exclusion_rule": "Include a daily evaluation observation only when actual appointment_count >= 10; exclude lower-volume days before calculating every metric.",
+      "one_step_ahead": {
+        "Seasonal Naive (Lag 7)": {
+          "mae": 211.5,
+          "rmse": 326.84968148326885,
+          "mape": 89.32886294194677,
+          "smape": 74.50698388561588,
+          "wape": 64.3695652173913,
+          "mape_volume_at_least_10": 89.32886294194677,
+          "r2": -0.16697720933384685,
+          "included_days": 56,
+          "excluded_days": 40
+        },
+        "7-Day Moving Average": {
+          "mae": 202.67857142857142,
+          "rmse": 274.3687985346173,
+          "mape": 182.93315251215583,
+          "smape": 72.22556142029927,
+          "wape": 61.684782608695656,
+          "mape_volume_at_least_10": 182.93315251215583,
+          "r2": 0.17768978485007858,
+          "included_days": 56,
+          "excluded_days": 40
+        },
+        "XGBoost Regressor": {
+          "mae": 201.1573028564453,
+          "rmse": 327.2955322265625,
+          "mape": 70.79553870639043,
+          "smape": 73.23688042439038,
+          "wape": 61.22178399562836,
+          "mape_volume_at_least_10": 70.79553870639043,
+          "r2": -0.17016315460205078,
+          "included_days": 56,
+          "excluded_days": 40
+        },
+        "Random Forest Regressor": {
+          "mae": 178.6814148743782,
+          "rmse": 308.44514724923084,
+          "mape": 56.189848327632774,
+          "smape": 63.087724521624885,
+          "wape": 54.381300179158586,
+          "mape_volume_at_least_10": 56.189848327632774,
+          "r2": -0.039255008413050074,
+          "included_days": 56,
+          "excluded_days": 40
+        },
+        "SARIMAX": {
+          "mae": 183.83368637847636,
+          "rmse": 275.20883239162873,
+          "mape": 130.31054766731577,
+          "smape": 71.49495807341559,
+          "wape": 55.94938281084063,
+          "mape_volume_at_least_10": 130.31054766731577,
+          "r2": 0.17264674871150065,
+          "included_days": 56,
+          "excluded_days": 40
+        }
+      },
+      "recursive_14_day_rolling_origin": {
+        "Seasonal Naive (Lag 7)": {
+          "mae": 215.84761904761905,
+          "rmse": 336.90029611712947,
+          "mape": 96.48881492407561,
+          "smape": 72.48744247022833,
+          "wape": 66.03537192972233,
+          "mape_volume_at_least_10": 96.48881492407561,
+          "r2": -0.1935100765862563,
+          "included_observations": 105,
+          "excluded_observations": 80
+        },
+        "7-Day Moving Average": {
+          "mae": 240.9195875693146,
+          "rmse": 335.9409251071756,
+          "mape": 206.5229551284274,
+          "smape": 82.13285055979134,
+          "wape": 73.70576817335751,
+          "mape_volume_at_least_10": 206.5229551284274,
+          "r2": -0.18672237898307742,
+          "included_observations": 105,
+          "excluded_observations": 80
+        },
+        "XGBoost Regressor": {
+          "mae": 249.16190476190476,
+          "rmse": 381.3834465906109,
+          "mape": 86.94502971682255,
+          "smape": 99.17147019641531,
+          "wape": 76.22738265202062,
+          "mape_volume_at_least_10": 86.94502971682255,
+          "r2": -0.5294912013713446,
+          "included_observations": 105,
+          "excluded_observations": 80
+        },
+        "Random Forest Regressor": {
+          "mae": 234.7904761904762,
+          "rmse": 366.2603159606826,
+          "mape": 75.06067073322494,
+          "smape": 86.39073905375133,
+          "wape": 71.83065761487136,
+          "mape_volume_at_least_10": 75.06067073322494,
+          "r2": -0.4105972604756185,
+          "included_observations": 105,
+          "excluded_observations": 80
+        },
+        "SARIMAX": {
+          "mae": 218.23771365859804,
+          "rmse": 314.56641521464667,
+          "mape": 185.33622777616426,
+          "smape": 80.78596105868901,
+          "wape": 66.76658586332798,
+          "mape_volume_at_least_10": 185.33622777616426,
+          "r2": -0.04051419884017737,
+          "included_observations": 105,
+          "excluded_observations": 80
+        }
+      }
+    }
+  },
+  "specialty_models": {
+    "psychotherapy": {
+      "artifact": "models/demand_forecast_specialty_psychotherapy.joblib",
+      "appointment_count": 28642,
+      "best_model": "XGBoost Regressor",
+      "metrics": {
+        "mae": 37.41621621621621,
+        "rmse": 67.47043396525221,
+        "mape": 649.9610554130734,
+        "smape": 111.80526502354257,
+        "wape": 76.49464029174494,
+        "mape_volume_at_least_10": 64.84016577628874,
+        "r2": 0.16922575000105033
+      },
+      "additional_metrics": {
+        "weekly_aggregate_one_step_ahead": {
+          "Seasonal Naive (Lag 7)": {
+            "weeks": 15,
+            "r2": -0.49848417258560085,
+            "wape": 82.96418960877665
+          },
+          "7-Day Moving Average": {
+            "weeks": 15,
+            "r2": 0.6497983667632143,
+            "wape": 43.729485170180666
+          },
+          "XGBoost Regressor": {
+            "weeks": 15,
+            "r2": 0.4010576605796814,
+            "wape": 50.403209868683575
+          },
+          "Random Forest Regressor": {
+            "weeks": 15,
+            "r2": 0.3607894330927983,
+            "wape": 48.04150223221807
+          },
+          "SARIMAX": {
+            "weeks": 15,
+            "r2": 0.628506216954743,
+            "wape": 48.31775640450647
+          }
+        },
+        "days_with_at_least_10_appointments": {
+          "exclusion_rule": "Include a daily evaluation observation only when actual appointment_count >= 10; exclude lower-volume days before calculating every metric.",
+          "one_step_ahead": {
+            "Seasonal Naive (Lag 7)": {
+              "mae": 64.28571428571429,
+              "rmse": 91.88102333441651,
+              "mape": 94.30934020905939,
+              "smape": 74.96462642961154,
+              "wape": 66.17647058823529,
+              "mape_volume_at_least_10": 94.30934020905939,
+              "r2": -0.37144675856855813,
+              "included_days": 49,
+              "excluded_days": 47
+            },
+            "7-Day Moving Average": {
+              "mae": 53.944606413994165,
+              "rmse": 72.5644523861658,
+              "mape": 99.46243084551303,
+              "smape": 63.90015871250565,
+              "wape": 55.531212484994,
+              "mape_volume_at_least_10": 99.46243084551303,
+              "r2": 0.14458837184094886,
+              "included_days": 49,
+              "excluded_days": 47
+            },
+            "XGBoost Regressor": {
+              "mae": 53.79447937011719,
+              "rmse": 85.9600830078125,
+              "mape": 59.93195909032806,
+              "smape": 66.9835596776618,
+              "wape": 55.37666941891197,
+              "mape_volume_at_least_10": 59.93195909032806,
+              "r2": -0.20038604736328125,
+              "included_days": 49,
+              "excluded_days": 47
+            },
+            "Random Forest Regressor": {
+              "mae": 53.00397584290956,
+              "rmse": 86.58835161221926,
+              "mape": 54.942997407462514,
+              "smape": 63.300503930959685,
+              "wape": 54.5629163088775,
+              "mape_volume_at_least_10": 54.942997407462514,
+              "r2": -0.21799708616347502,
+              "included_days": 49,
+              "excluded_days": 47
+            },
+            "SARIMAX": {
+              "mae": 48.98494844124744,
+              "rmse": 72.31726116395369,
+              "mape": 78.08281238977737,
+              "smape": 62.59523780436266,
+              "wape": 50.425682218931186,
+              "mape_volume_at_least_10": 78.08281238977737,
+              "r2": 0.15040637461452688,
+              "included_days": 49,
+              "excluded_days": 47
+            }
+          },
+          "recursive_14_day_rolling_origin": {
+            "Seasonal Naive (Lag 7)": {
+              "mae": 65.17391304347827,
+              "rmse": 94.54272096230636,
+              "mape": 106.6806245230842,
+              "smape": 74.3447836843701,
+              "wape": 67.29517396184063,
+              "mape_volume_at_least_10": 106.6806245230842,
+              "r2": -0.38689512839606355,
+              "included_observations": 92,
+              "excluded_observations": 93
+            },
+            "7-Day Moving Average": {
+              "mae": 66.6725372021599,
+              "rmse": 91.68452036260112,
+              "mape": 137.76386331463362,
+              "smape": 75.85979107995564,
+              "wape": 68.84257488887442,
+              "mape_volume_at_least_10": 137.76386331463362,
+              "r2": -0.30430591228233883,
+              "included_observations": 92,
+              "excluded_observations": 93
+            },
+            "XGBoost Regressor": {
+              "mae": 59.81521739130435,
+              "rmse": 90.87622973272374,
+              "mape": 64.84016577628874,
+              "smape": 79.96725625888546,
+              "wape": 61.762065095398434,
+              "mape_volume_at_least_10": 64.84016577628874,
+              "r2": -0.2814097663796227,
+              "included_observations": 92,
+              "excluded_observations": 93
+            },
+            "Random Forest Regressor": {
+              "mae": 60.96739130434783,
+              "rmse": 91.3348473903914,
+              "mape": 60.90684056504681,
+              "smape": 74.15568174747631,
+              "wape": 62.951739618406286,
+              "mape_volume_at_least_10": 60.90684056504681,
+              "r2": -0.2943759741209673,
+              "included_observations": 92,
+              "excluded_observations": 93
+            },
+            "SARIMAX": {
+              "mae": 59.83873850436074,
+              "rmse": 87.00749773807593,
+              "mape": 95.59922771705804,
+              "smape": 69.24412958952513,
+              "wape": 61.78635176656777,
+              "mape_volume_at_least_10": 95.59922771705804,
+              "r2": -0.17462918167781516,
+              "included_observations": 92,
+              "excluded_observations": 93
+            }
+          }
+        }
+      }
+    },
+    "speech therapy": {
+      "artifact": "models/demand_forecast_specialty_speech_therapy.joblib",
+      "appointment_count": 22321,
+      "best_model": "Random Forest Regressor",
+      "metrics": {
+        "mae": 33.25945945945946,
+        "rmse": 59.037001681721335,
+        "mape": 530.5746355371244,
+        "smape": 128.04928238700782,
+        "wape": 87.57472245943639,
+        "mape_volume_at_least_10": 64.31302948592337,
+        "r2": -0.050148193041109845
+      },
+      "additional_metrics": {
+        "weekly_aggregate_one_step_ahead": {
+          "Seasonal Naive (Lag 7)": {
+            "weeks": 15,
+            "r2": -0.46281636489922673,
+            "wape": 78.5903550609433
+          },
+          "7-Day Moving Average": {
+            "weeks": 15,
+            "r2": 0.6442744563330438,
+            "wape": 40.88500264970855
+          },
+          "XGBoost Regressor": {
+            "weeks": 15,
+            "r2": 0.4001626968383789,
+            "wape": 49.9622054875813
+          },
+          "Random Forest Regressor": {
+            "weeks": 15,
+            "r2": 0.4134003320925421,
+            "wape": 50.56055146714653
+          },
+          "SARIMAX": {
+            "weeks": 15,
+            "r2": 0.6561319924397485,
+            "wape": 46.455347126815674
+          }
+        },
+        "days_with_at_least_10_appointments": {
+          "exclusion_rule": "Include a daily evaluation observation only when actual appointment_count >= 10; exclude lower-volume days before calculating every metric.",
+          "one_step_ahead": {
+            "Seasonal Naive (Lag 7)": {
+              "mae": 50.916666666666664,
+              "rmse": 73.56941166907163,
+              "mape": 93.12047885062017,
+              "smape": 75.48565416393615,
+              "wape": 65.82278481012658,
+              "mape_volume_at_least_10": 93.12047885062017,
+              "r2": -0.45946570345058646,
+              "included_days": 48,
+              "excluded_days": 48
+            },
+            "7-Day Moving Average": {
+              "mae": 42.413690476190474,
+              "rmse": 57.51030298111454,
+              "mape": 91.79266443208918,
+              "smape": 61.644676507531,
+              "wape": 54.83051825631949,
+              "mape_volume_at_least_10": 91.79266443208918,
+              "r2": 0.10815241852278057,
+              "included_days": 48,
+              "excluded_days": 48
+            },
+            "XGBoost Regressor": {
+              "mae": 48.3531494140625,
+              "rmse": 71.36693572998047,
+              "mape": 69.85053500748988,
+              "smape": 76.84525256862736,
+              "wape": 62.508781303654395,
+              "mape_volume_at_least_10": 69.85053500748988,
+              "r2": -0.3733886480331421,
+              "included_days": 48,
+              "excluded_days": 48
+            },
+            "Random Forest Regressor": {
+              "mae": 44.60849553595673,
+              "rmse": 69.8218082257355,
+              "mape": 58.537341370694385,
+              "smape": 68.0149313781829,
+              "wape": 57.667863876270474,
+              "mape_volume_at_least_10": 58.537341370694385,
+              "r2": -0.31456332418294797,
+              "included_days": 48,
+              "excluded_days": 48
+            },
+            "SARIMAX": {
+              "mae": 40.07655966900785,
+              "rmse": 59.696129822821746,
+              "mape": 73.62561376521074,
+              "smape": 59.337651809879965,
+              "wape": 51.809180288510014,
+              "mape_volume_at_least_10": 73.62561376521074,
+              "r2": 0.039070159492583745,
+              "included_days": 48,
+              "excluded_days": 48
+            }
+          },
+          "recursive_14_day_rolling_origin": {
+            "Seasonal Naive (Lag 7)": {
+              "mae": 53.4,
+              "rmse": 75.75017418388481,
+              "mape": 108.02212776023086,
+              "smape": 78.03970214169054,
+              "wape": 69.56144159791576,
+              "mape_volume_at_least_10": 108.02212776023086,
+              "r2": -0.4758960995758601,
+              "included_observations": 90,
+              "excluded_observations": 95
+            },
+            "7-Day Moving Average": {
+              "mae": 52.207058603498325,
+              "rmse": 71.81377342330312,
+              "mape": 119.68342868454982,
+              "smape": 73.65686020035116,
+              "wape": 68.00745801584671,
+              "mape_volume_at_least_10": 119.68342868454982,
+              "r2": -0.3264900835288369,
+              "included_observations": 90,
+              "excluded_observations": 95
+            },
+            "XGBoost Regressor": {
+              "mae": 59.733333333333334,
+              "rmse": 85.13492559200105,
+              "mape": 73.33243406634354,
+              "smape": 103.33960141312173,
+              "wape": 77.81155015197568,
+              "mape_volume_at_least_10": 73.33243406634354,
+              "r2": -0.8642494986540752,
+              "included_observations": 90,
+              "excluded_observations": 95
+            },
+            "Random Forest Regressor": {
+              "mae": 57.1,
+              "rmse": 83.17351341222357,
+              "mape": 64.31302948592337,
+              "smape": 94.88188912493855,
+              "wape": 74.3812418584455,
+              "mape_volume_at_least_10": 64.31302948592337,
+              "r2": -0.7793386320579605,
+              "included_observations": 90,
+              "excluded_observations": 95
+            },
+            "SARIMAX": {
+              "mae": 47.40533344112083,
+              "rmse": 68.79222979787257,
+              "mape": 88.36219275098084,
+              "smape": 68.57570381556407,
+              "wape": 61.752496883787444,
+              "mape_volume_at_least_10": 88.36219275098084,
+              "r2": -0.21721497516261423,
+              "included_observations": 90,
+              "excluded_observations": 95
+            }
+          }
+        }
+      }
+    },
+    "physiotherapy": {
+      "artifact": "models/demand_forecast_specialty_physiotherapy.joblib",
+      "appointment_count": 21001,
+      "best_model": "Random Forest Regressor",
+      "metrics": {
+        "mae": 30.491891891891893,
+        "rmse": 55.5474474563766,
+        "mape": 454.5248885146072,
+        "smape": 123.17690320844339,
+        "wape": 84.01846887101578,
+        "mape_volume_at_least_10": 60.59767240374524,
+        "r2": 0.0006989210314903849
+      },
+      "additional_metrics": {
+        "weekly_aggregate_one_step_ahead": {
+          "Seasonal Naive (Lag 7)": {
+            "weeks": 15,
+            "r2": -0.4670547569498986,
+            "wape": 84.09343715239154
+          },
+          "7-Day Moving Average": {
+            "weeks": 15,
+            "r2": 0.6513886872442167,
+            "wape": 43.63975846178293
+          },
+          "XGBoost Regressor": {
+            "weeks": 15,
+            "r2": 0.5055977702140808,
+            "wape": 46.98883394510781
+          },
+          "Random Forest Regressor": {
+            "weeks": 15,
+            "r2": 0.48409535727109865,
+            "wape": 47.70518099085557
+          },
+          "SARIMAX": {
+            "weeks": 15,
+            "r2": 0.6353316422410813,
+            "wape": 49.35654278939756
+          }
+        },
+        "days_with_at_least_10_appointments": {
+          "exclusion_rule": "Include a daily evaluation observation only when actual appointment_count >= 10; exclude lower-volume days before calculating every metric.",
+          "one_step_ahead": {
+            "Seasonal Naive (Lag 7)": {
+              "mae": 53.09090909090909,
+              "rmse": 72.63607918933951,
+              "mape": 100.09770372736409,
+              "smape": 79.11870228360861,
+              "wape": 66.45803698435277,
+              "mape_volume_at_least_10": 100.09770372736409,
+              "r2": -0.5742799416607751,
+              "included_days": 44,
+              "excluded_days": 52
+            },
+            "7-Day Moving Average": {
+              "mae": 40.12662337662337,
+              "rmse": 55.95214377770493,
+              "mape": 67.27692810618522,
+              "smape": 55.84230063684289,
+              "wape": 50.229628124364964,
+              "mape_volume_at_least_10": 67.27692810618522,
+              "r2": 0.06586286498899196,
+              "included_days": 44,
+              "excluded_days": 52
+            },
+            "XGBoost Regressor": {
+              "mae": 44.86929702758789,
+              "rmse": 66.4781494140625,
+              "mape": 60.141141360523676,
+              "smape": 70.44295598331973,
+              "wape": 56.166402211738685,
+              "mape_volume_at_least_10": 60.141141360523676,
+              "r2": -0.3186664581298828,
+              "included_days": 44,
+              "excluded_days": 52
+            },
+            "Random Forest Regressor": {
+              "mae": 44.21668995135435,
+              "rmse": 65.74852259240313,
+              "mape": 56.68370435318305,
+              "smape": 67.92813760352959,
+              "wape": 55.34948386513773,
+              "mape_volume_at_least_10": 56.68370435318305,
+              "r2": -0.2898795932607081,
+              "included_days": 44,
+              "excluded_days": 52
+            },
+            "SARIMAX": {
+              "mae": 41.61106040969208,
+              "rmse": 59.48057847672464,
+              "mape": 63.92700288008724,
+              "smape": 59.34528096166388,
+              "wape": 52.08781388410958,
+              "mape_volume_at_least_10": 63.92700288008724,
+              "r2": -0.055668450046822304,
+              "included_days": 44,
+              "excluded_days": 52
+            }
+          },
+          "recursive_14_day_rolling_origin": {
+            "Seasonal Naive (Lag 7)": {
+              "mae": 54.19512195121951,
+              "rmse": 75.45229473308154,
+              "mape": 109.53642575190415,
+              "smape": 77.87230933495958,
+              "wape": 67.77489705658076,
+              "mape_volume_at_least_10": 109.53642575190415,
+              "r2": -0.6109646763723067,
+              "included_observations": 82,
+              "excluded_observations": 103
+            },
+            "7-Day Moving Average": {
+              "mae": 50.64784844957453,
+              "rmse": 70.18649368792424,
+              "mape": 90.48362768941071,
+              "smape": 69.11569884704063,
+              "wape": 63.33877646583974,
+              "mape_volume_at_least_10": 90.48362768941071,
+              "r2": -0.39395324254245545,
+              "included_observations": 82,
+              "excluded_observations": 103
+            },
+            "XGBoost Regressor": {
+              "mae": 60.01219512195122,
+              "rmse": 82.71852065007319,
+              "mape": 71.7333499122254,
+              "smape": 100.92443382196423,
+              "wape": 75.04956535000763,
+              "mape_volume_at_least_10": 71.7333499122254,
+              "r2": -0.9361840153080121,
+              "included_observations": 82,
+              "excluded_observations": 103
+            },
+            "Random Forest Regressor": {
+              "mae": 57.46341463414634,
+              "rmse": 81.75871699628149,
+              "mape": 60.59767240374524,
+              "smape": 92.12113834444841,
+              "wape": 71.86213207259418,
+              "mape_volume_at_least_10": 60.59767240374524,
+              "r2": -0.8915126408555571,
+              "included_observations": 82,
+              "excluded_observations": 103
+            },
+            "SARIMAX": {
+              "mae": 47.911405066404086,
+              "rmse": 68.59273287193004,
+              "mape": 75.18092674940485,
+              "smape": 66.02706093459496,
+              "wape": 59.916657243329794,
+              "mape_volume_at_least_10": 75.18092674940485,
+              "r2": -0.3313655816882519,
+              "included_observations": 82,
+              "excluded_observations": 103
+            }
+          }
+        }
+      }
+    }
+  },
   "python_version": "3.14.7",
   "library_versions": {
     "numpy": "2.5.3",

@@ -37,6 +37,22 @@ def generate_insights(cleaned_df, output_dir='outputs'):
         'shift': _summary(df, 'appointment_shift'),
         'weekday_volume': {str(k): int(v) for k, v in df.groupby(df['appointment_date'].dt.day_name()).size().items()}
     }
+    # Compact, report-ready summaries are derived from the same cleaned rows.
+    insights['location_appointments'] = _summary(df, 'place_clean')
+    insights['demand_by_specialty'] = {
+        str(name): int(count) for name, count in df['specialty'].value_counts(dropna=False).items()
+    }
+    insights['top_factors'] = {
+        'age_group': insights['age_group'],
+        'specialty': insights['specialty'],
+        'companion': insights['companion'],
+        'place_type': insights['place_type'],
+    }
+    insights['recommendations'] = [
+        'Use standard confirmation and evaluate outreach changes with an A/B test.',
+        'Treat health-segment, weather, and location associations as descriptive, not causal.',
+        'Validate appointment volume and staffing plans against current clinic operations.',
+    ]
     health_segments = {}
     for col in ['Hipertension', 'Diabetes', 'disability']:
         if col in df:

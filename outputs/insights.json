@@ -185,6 +185,166 @@
     "Tuesday": 15536,
     "Wednesday": 14330
   },
+  "location_appointments": {
+    "BALNEARIO CAMBORIU": {
+      "appointments": 6018,
+      "no_show_rate": 0.09189099368560984
+    },
+    "BALNEARIO PICARRAS": {
+      "appointments": 943,
+      "no_show_rate": 0.06680805938494168
+    },
+    "BOMBINHAS": {
+      "appointments": 1707,
+      "no_show_rate": 0.11716461628588166
+    },
+    "CAMBORIU": {
+      "appointments": 5523,
+      "no_show_rate": 0.07441607821835959
+    },
+    "ILHOTA": {
+      "appointments": 583,
+      "no_show_rate": 0.1320754716981132
+    },
+    "ITAJAI": {
+      "appointments": 20512,
+      "no_show_rate": 0.08877730109204368
+    },
+    "ITAPEMA": {
+      "appointments": 2665,
+      "no_show_rate": 0.09681050656660413
+    },
+    "LUIZ ALVES": {
+      "appointments": 523,
+      "no_show_rate": 0.13575525812619502
+    },
+    "MISSING": {
+      "appointments": 11509,
+      "no_show_rate": 0.34842297332522376
+    },
+    "NAVEGANTES": {
+      "appointments": 3901,
+      "no_show_rate": 0.10510125608818252
+    },
+    "PENHA": {
+      "appointments": 1038,
+      "no_show_rate": 0.06165703275529865
+    },
+    "PORTO BELO": {
+      "appointments": 950,
+      "no_show_rate": 0.1168421052631579
+    },
+    "UNKNOWN_SYNTHETIC": {
+      "appointments": 53685,
+      "no_show_rate": 0.49887305578839525
+    }
+  },
+  "demand_by_specialty": {
+    "psychotherapy": 28642,
+    "speech therapy": 22321,
+    "physiotherapy": 21001,
+    "Missing": 20100,
+    "occupational therapy": 11318,
+    "pedagogo": 3535,
+    "enf": 1681,
+    "assist": 635,
+    "sem especialidade": 324
+  },
+  "top_factors": {
+    "age_group": {
+      "0-12": {
+        "appointments": 44417,
+        "no_show_rate": 0.2765832901816872
+      },
+      "13-18": {
+        "appointments": 20790,
+        "no_show_rate": 0.35103415103415103
+      },
+      "19-40": {
+        "appointments": 10567,
+        "no_show_rate": 0.45490678527491246
+      },
+      "41-60": {
+        "appointments": 4633,
+        "no_show_rate": 0.3060651845456508
+      },
+      "60+": {
+        "appointments": 6221,
+        "no_show_rate": 0.2239189840861598
+      },
+      "Unknown": {
+        "appointments": 22929,
+        "no_show_rate": 0.33276636573771207
+      }
+    },
+    "specialty": {
+      "Missing": {
+        "appointments": 20100,
+        "no_show_rate": 0.40676616915422886
+      },
+      "assist": {
+        "appointments": 635,
+        "no_show_rate": 0.2692913385826772
+      },
+      "enf": {
+        "appointments": 1681,
+        "no_show_rate": 0.19750148720999405
+      },
+      "occupational therapy": {
+        "appointments": 11318,
+        "no_show_rate": 0.23864640395829653
+      },
+      "pedagogo": {
+        "appointments": 3535,
+        "no_show_rate": 0.15983026874115983
+      },
+      "physiotherapy": {
+        "appointments": 21001,
+        "no_show_rate": 0.3436979191467073
+      },
+      "psychotherapy": {
+        "appointments": 28642,
+        "no_show_rate": 0.32340618671880456
+      },
+      "sem especialidade": {
+        "appointments": 324,
+        "no_show_rate": 0.5277777777777778
+      },
+      "speech therapy": {
+        "appointments": 22321,
+        "no_show_rate": 0.27928856234039695
+      }
+    },
+    "companion": {
+      "0": {
+        "appointments": 52591,
+        "no_show_rate": 0.34848167937479796
+      },
+      "1": {
+        "appointments": 56966,
+        "no_show_rate": 0.28971667310325455
+      }
+    },
+    "place_type": {
+      "missing": {
+        "appointments": 11509,
+        "no_show_rate": 0.34842297332522376
+      },
+      "real_municipality": {
+        "appointments": 44363,
+        "no_show_rate": 0.09104433875076078
+      },
+      "synthetic_or_other": {
+        "appointments": 53685,
+        "no_show_rate": 0.49887305578839525
+      }
+    }
+  },
+  "recommendations": [
+    "Use standard confirmation and evaluate outreach changes with an A/B test.",
+    "Treat health-segment, weather, and location associations as descriptive, not causal.",
+    "Validate appointment volume and staffing plans against current clinic operations."
+  ],
   "health_segments": {
     "Hipertension": {
       "missing": {

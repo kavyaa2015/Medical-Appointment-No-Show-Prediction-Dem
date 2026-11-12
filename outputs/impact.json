@@ -1,0 +1,57 @@
+{
+  "classifier_test_predictions": {
+    "threshold": 0.44000000000000006,
+    "test_rows": 21912,
+    "all_test_no_shows": 6966,
+    "flagged_count": 10675,
+    "flagged_share": 0.48717597663380796,
+    "true_positives": 5395,
+    "precision": 0.5053864168618267,
+    "recall": 0.7744760264140109
+  },
+  "outreach_scenarios": {
+    "definition": "Prevented no-shows = test-set true positives x reach x conversion. These are scenarios, not forecasts.",
+    "scenarios": [
+      {
+        "reach": 0.5,
+        "conversion": 0.1,
+        "expected_prevented_no_shows": 269.75,
+        "prevented_share_of_all_test_no_shows": 0.038723801320700545,
+        "label": "Scenario only; assumes reached true-positive flags convert at the stated rate."
+      },
+      {
+        "reach": 0.5,
+        "conversion": 0.2,
+        "expected_prevented_no_shows": 539.5,
+        "prevented_share_of_all_test_no_shows": 0.07744760264140109,
+        "label": "Scenario only; assumes reached true-positive flags convert at the stated rate."
+      },
+      {
+        "reach": 0.8,
+        "conversion": 0.1,
+        "expected_prevented_no_shows": 431.6,
+        "prevented_share_of_all_test_no_shows": 0.06195808211312088,
+        "label": "Scenario only; assumes reached true-positive flags convert at the stated rate."
+      },
+      {
+        "reach": 0.8,
+        "conversion": 0.2,
+        "expected_prevented_no_shows": 863.2,
+        "prevented_share_of_all_test_no_shows": 0.12391616422624176,
+        "label": "Scenario only; assumes reached true-positive flags convert at the stated rate."
+      }
+    ]
+  },
+  "staffing": {
+    "comparison": "Selected recursive model relative to seasonal naive (Lag 7)",
+    "selected_model_mae": 156.94054054054055,
+    "seasonal_naive_mae": 190.1081081081081,
+    "relative_mae_reduction": 0.17446687517770817,
+    "relative_mae_reduction_percent": 17.44668751777082,
+    "caveat": "Absolute forecast error remains large; this relative improvement does not imply accurate daily staffing counts."
+  },
+  "deployment_feasibility": {
+    "measured_inference_latency_ms": 15.164299999014474,
+    "paragraph": "Deployment requires specialty, gender, age, disability, appointment date/time/shift, companion and chronic-condition indicators, SMS status, and weather fields before each visit; place is omitted by the deployed no_place variant. The measured per-record model inference latency was 15.16 ms on this run. Retrain on a scheduled quarterly cadence or sooner when validated drift monitoring signals degradation; monitor calibration, flagged share, precision/recall, and forecast errors against fresh outcomes. Restrict health-data access, minimize retained fields, encrypt data in transit and at rest, and follow the clinic's privacy and consent requirements."
+  }
+}

@@ -38,56 +38,8 @@ from src.utils import (
     plot_forecast_comparison,
 )
 from src.insights import generate_insights
-
-
-def update_readme_from_reports():
-    """Fill README data and target summaries exclusively from generated JSON."""
-    with open('outputs/insights.json', encoding='utf-8') as handle:
-        insights = json.load(handle)
-    with open('outputs/classification_report.json', encoding='utf-8') as handle:
-        classification = json.load(handle)
-    with open('outputs/forecasting_report.json', encoding='utf-8') as handle:
-        forecasting = json.load(handle)
-    versions = {'numpy': np_version.__version__, 'pandas': pd_version.__version__,
-                'scikit_learn': sklearn.__version__, 'xgboost': xgboost.__version__,
-                'statsmodels': statsmodels.__version__}
-    classification['python_version'] = forecasting['python_version'] = platform.python_version()
-    classification['library_versions'] = forecasting['library_versions'] = versions
-    with open('outputs/classification_report.json', 'w', encoding='utf-8') as handle:
-        json.dump(classification, handle, indent=2)
-    with open('outputs/forecasting_report.json', 'w', encoding='utf-8') as handle:
-        json.dump(forecasting, handle, indent=2)
-    place_rows = ['| Place type | Appointments | No-show rate |', '|---|---:|---:|']
-    for group, values in insights['place_type'].items():
-        place_rows.append(f"| {group} | {values['appointments']:,} | {values['no_show_rate']:.1%} |")
-    variant = classification['deployed_variant']
-    best_name = classification['variants'][variant]['best_model']
-    clf = classification['variants'][variant]['models'][best_name]
-    forecast_name = forecasting['best_model']
-    forecast = forecasting['protocols']['recursive_14_day_rolling_origin'][forecast_name]
-    audits = [
-        ('Positive-class F1 > 0.70', clf['f1_score_tuned'], clf['f1_score_tuned'] > 0.70),
-        ('Forecast R² > 0.65', forecast['r2'], forecast['r2'] > 0.65),
-        ('Forecast MAPE < 20%', forecast['mape'], forecast['mape'] < 20),
-    ]
-    classifier_rows = ['| Variant | Selected model | ROC-AUC | Positive-class F1 |', '|---|---|---:|---:|']
-    for name, variant_report in classification['variants'].items():
-        selected = variant_report['models'][variant_report['best_model']]
-        classifier_rows.append(f"| {name} | {variant_report['best_model']} | {selected['roc_auc']:.4f} | {selected['f1_score_tuned']:.4f} |")
-    target_rows = [f"- **{label}:** {'MET' if passed else 'MISSED'} ({value:.4f})." for label, value, passed in audits]
-    readme = open('README.md', encoding='utf-8').read()
-    replacements = [
-        ('<!-- GENERATED_PLACE_STATS_START -->', '<!-- GENERATED_PLACE_STATS_END -->', '\n'.join(place_rows)),
-        ('<!-- GENERATED_TARGET_AUDIT_START -->', '<!-- GENERATED_TARGET_AUDIT_END -->',
-         f"Deployed classifier: {variant} / {best_name}. Forecast selected by recursive WAPE: {forecast_name}.\n\n" +
-         '\n'.join(classifier_rows) + '\n\n' + '\n'.join(target_rows))
-    ]
-    for start_marker, end_marker, content in replacements:
-        start = readme.index(start_marker) + len(start_marker)
-        end = readme.index(end_marker, start)
-        readme = readme[:start] + '\n' + content + '\n' + readme[end:]
-    with open('README.md', 'w', encoding='utf-8') as handle:
-        handle.write(readme)
+from src.impact import build_impact_report
+from src.reporting import update_readme_from_reports
 
 
 def run():
@@ -227,6 +179,15 @@ def run():
                                               'scikit_learn': sklearn.__version__, 'xgboost': xgboost.__version__}},
                         'outputs/classification_report.json')
 
+    deployed_test_X = X_test.drop(columns=['place_clean'])
+    deployed_probabilities = best_pipeline.predict_proba(deployed_test_X)[:, 1]
+    latency_samples = []
+    for _ in range(25):
+        tick = __import__('time').perf_counter()
+        best_pipeline.predict_proba(deployed_test_X.iloc[[0]])
+        latency_samples.append((__import__('time').perf_counter() - tick) * 1000.0)
+    measured_latency_ms = float(np.median(latency_samples))
+
     # 4. Train Forecasting Models
     print("\n[Phase 4] Training and evaluating time series demand forecasters...")
     ts_results, best_ts_name, best_ts_model, test_eval_df = train_and_evaluate_forecasting(
@@ -261,6 +222,55 @@ def run():
                                               'scikit_learn': sklearn.__version__, 'xgboost': xgboost.__version__,
                                               'statsmodels': statsmodels.__version__}},
                         'outputs/forecasting_report.json')
+
+    # Train separate models for the three most common named specialties. Each
+    # model uses the existing forecaster and its existing recursive-WAPE rule.
+    specialty_models = {}
+    specialty_counts = clean_df.loc[
+        ~clean_df['specialty'].astype(str).str.strip().str.lower().isin(['missing', 'nan', 'none', '']),
+        'specialty'
+    ].value_counts().head(3)
+    for specialty, appointments in specialty_counts.items():
+        specialty_series = build_daily_time_series(clean_df, specialty=specialty)
+        specialty_results, specialty_best_name, specialty_model, _ = train_and_evaluate_forecasting(
+            specialty_series, test_ratio=0.20
+        )
+        safe_name = ''.join(ch.lower() if ch.isalnum() else '_' for ch in str(specialty)).strip('_')
+        artifact_path = f'models/demand_forecast_specialty_{safe_name}.joblib'
+        save_forecasting_artifact(
+            model=specialty_model,
+            model_name=specialty_best_name,
+            metadata={
+                'specialty': str(specialty),
+                'appointment_count': int(appointments),
+                'metrics': specialty_results['protocols']['recursive_14_day_rolling_origin'][specialty_best_name],
+                'all_models': specialty_results,
+                'python_version': platform.python_version(),
+            },
+            filepath=artifact_path,
+        )
+        specialty_models[str(specialty)] = {
+            'artifact': artifact_path,
+            'appointment_count': int(appointments),
+            'best_model': specialty_best_name,
+            'metrics': specialty_results['protocols']['recursive_14_day_rolling_origin'][specialty_best_name],
+            'additional_metrics': specialty_results['additional_metrics'],
+        }
+    ts_results['specialty_models'] = specialty_models
+    save_metrics_report({**ts_results, 'python_version': platform.python_version(),
+                         'library_versions': {'numpy': np_version.__version__, 'pandas': pd_version.__version__,
+                                              'scikit_learn': sklearn.__version__, 'xgboost': xgboost.__version__,
+                                              'statsmodels': statsmodels.__version__}},
+                        'outputs/forecasting_report.json')
+
+    selected_recursive = ts_results['protocols']['recursive_14_day_rolling_origin'][best_ts_name]
+    naive_recursive = ts_results['protocols']['recursive_14_day_rolling_origin']['Seasonal Naive (Lag 7)']
+    impact = build_impact_report(
+        y_test, deployed_probabilities, best_metadata['optimal_threshold'],
+        {'mae': selected_recursive['mae'], 'Seasonal Naive (Lag 7)': naive_recursive},
+        measured_latency_ms,
+    )
+    save_metrics_report(impact, 'outputs/impact.json')
 
     # 5. Derive business insights directly from cleaned appointment rows.
     generate_insights(clean_df, 'outputs')

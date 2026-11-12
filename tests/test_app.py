@@ -19,3 +19,10 @@ def test_required_directories():
     assert os.path.exists('outputs')
     assert os.path.exists('notebooks')
     assert os.path.exists('requirements.txt')
+
+
+def test_streamlit_apptest_smoke():
+    from streamlit.testing.v1 import AppTest
+
+    app_test = AppTest.from_file(os.path.join(os.path.dirname(__file__), '..', 'app.py'), default_timeout=45).run()
+    assert not app_test.exception

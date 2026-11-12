@@ -99,6 +99,24 @@ def get_dataset():
     return cleaned
 
 
+@st.cache_resource
+def get_specialty_forecasting_artifact(specialty):
+    slug = ''.join(ch.lower() if ch.isalnum() else '_' for ch in str(specialty)).strip('_')
+    model_path = f'models/demand_forecast_specialty_{slug}.joblib'
+    if not os.path.exists(model_path):
+        return None
+    return load_forecasting_artifact(model_path)
+
+
+@st.cache_data
+def get_forecasting_report():
+    path = 'outputs/forecasting_report.json'
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding='utf-8') as handle:
+        return json.load(handle)
+
+
 @st.cache_data
 def get_daily_series():
     """Load the privacy-preserving aggregate shipped with the repository."""
@@ -330,13 +348,13 @@ with tab_pred:
 # =========================================================================
 with tab_fore:
     st.header("Daily Appointment Demand Forecaster")
-    st.caption("Specialty and city forecasts are approximate (overall-series model applied to a filtered series).")
     st.markdown(
         "Forecast daily appointment volumes overall and across specialized rehabilitation services. "
         "Captures 7-day cyclicality, seasonal shifts, and helps clinic administrators optimize staffing schedules."
     )
 
     fore_artifact = get_forecasting_artifact()
+    forecast_report = get_forecasting_report() or {}
     df_data = get_dataset()
     shipped_daily_series = get_daily_series()
 
@@ -377,11 +395,43 @@ with tab_fore:
         if df_data is None:
             st.caption("Overall forecasting uses the included daily aggregate. Add local `data/raw.csv` and rerun the pipeline to enable specialty and location filters.")
 
+        # Use the dedicated specialty model for an unfiltered location when available.
+        selected_fore_artifact = fore_artifact
+        specialty_model_used = False
+        if selected_specialty != 'All' and selected_location == 'All':
+            candidate_artifact = get_specialty_forecasting_artifact(selected_specialty)
+            if candidate_artifact is not None:
+                selected_fore_artifact = candidate_artifact
+                specialty_model_used = True
+        if (selected_specialty != 'All' or selected_location != 'All') and not specialty_model_used:
+            st.caption("This filtered specialty/location forecast is approximate: it applies the overall-series model to filtered appointment counts.")
+        elif specialty_model_used:
+            st.caption(f"Using the dedicated model trained on the {selected_specialty} appointment series.")
+
         # Build daily series
         daily_series = (
             build_daily_time_series(df_data, specialty=selected_specialty, location=selected_location)
             if df_data is not None else shipped_daily_series
         )
+
+        report_source = forecast_report
+        if specialty_model_used:
+            report_source = forecast_report.get('specialty_models', {}).get(selected_specialty, {})
+        additional = report_source.get('additional_metrics', {})
+        weekly_metrics = additional.get('weekly_aggregate_one_step_ahead', {})
+        restricted = additional.get('days_with_at_least_10_appointments', {})
+        restricted_protocol = restricted.get('recursive_14_day_rolling_origin', {})
+        diagnostic_model_name = selected_fore_artifact.get('model_name', best_fore_name)
+        diagnostic_rows = []
+        weekly_row = weekly_metrics.get(diagnostic_model_name)
+        if weekly_row:
+            diagnostic_rows.append({'Evaluation': 'Weekly aggregate (one-step)', 'R-squared': weekly_row.get('r2'), 'WAPE (%)': weekly_row.get('wape'), 'Included units': weekly_row.get('weeks')})
+        volume_row = restricted_protocol.get(diagnostic_model_name)
+        if volume_row:
+            diagnostic_rows.append({'Evaluation': 'Recursive days with actual count >= 10', 'R-squared': volume_row.get('r2'), 'WAPE (%)': volume_row.get('wape'), 'Included units': volume_row.get('included_observations')})
+        if diagnostic_rows:
+            st.caption("Additional evaluation diagnostics (reported alongside daily test metrics). Low-volume exclusion: actual daily count < 10 is excluded before metric calculation.")
+            st.dataframe(pd.DataFrame(diagnostic_rows), hide_index=True, width='stretch')
 
         if not st.session_state.get('forecast_requested', False):
             st.info('Select Generate Demand Forecast to run this forecast.')
@@ -389,7 +439,7 @@ with tab_fore:
             try:
                 with st.spinner("Generating recursive demand forecast..."):
                     with LatencyTimer() as f_timer:
-                        future_forecast = forecast_future_demand(fore_artifact, daily_series, horizon_days=horizon)
+                        future_forecast = forecast_future_demand(selected_fore_artifact, daily_series, horizon_days=horizon)
             except Exception as exc:
                 st.error(f"Forecast failed: {exc}")
                 st.stop()
@@ -472,12 +522,42 @@ with tab_insights:
     try:
         with open('outputs/insights.json', encoding='utf-8') as insights_file:
             insights = json.load(insights_file)
+        impact_path = 'outputs/impact.json'
+        if os.path.exists(impact_path):
+            with open(impact_path, encoding='utf-8') as impact_file:
+                impact = json.load(impact_file)
+            st.subheader('Business impact scenarios')
+            classifier_impact = impact['classifier_test_predictions']
+            i1, i2, i3 = st.columns(3)
+            i1.metric('Flagged share', f"{classifier_impact['flagged_share']:.1%}")
+            i2.metric('Precision at deployed threshold', f"{classifier_impact['precision']:.1%}")
+            i3.metric('Recall at deployed threshold', f"{classifier_impact['recall']:.1%}")
+            st.caption(f"Threshold {classifier_impact['threshold']:.3f}; {classifier_impact['flagged_count']:,} of {classifier_impact['test_rows']:,} held-out appointments flagged.")
+            scenario_df = pd.DataFrame(impact['outreach_scenarios']['scenarios'])
+            scenario_df['reach'] = scenario_df['reach'].map(lambda value: f'{value:.0%}')
+            scenario_df['conversion'] = scenario_df['conversion'].map(lambda value: f'{value:.0%}')
+            scenario_df['prevented_share_of_all_test_no_shows'] = scenario_df['prevented_share_of_all_test_no_shows'].map(lambda value: f'{value:.2%}')
+            st.dataframe(scenario_df[['reach', 'conversion', 'expected_prevented_no_shows', 'prevented_share_of_all_test_no_shows']], hide_index=True, width='stretch')
+            st.caption(impact['outreach_scenarios']['definition'])
+            staffing = impact['staffing']
+            st.write(f"Recursive forecast MAE reduction vs seasonal naive: {staffing['relative_mae_reduction_percent']:.1f}%. {staffing['caveat']}")
+            st.markdown('**Deployment feasibility.** ' + impact['deployment_feasibility']['paragraph'])
+        st.divider()
         st.info(insights['sms_conclusion'])
-        for key in ['place_type', 'heat_intensity_by_place_type', 'age_group', 'specialty', 'companion', 'shift', 'weekday_volume', 'health_segments']:
-            st.markdown(f"#### {key.replace('_', ' ').title()}")
-            st.json(insights[key])
-        st.markdown('#### Segment reminder recommendations')
-        st.json(insights['segment_reminder_recommendations'])
+        st.markdown('#### Top observed factors')
+        st.json(insights.get('top_factors', {}))
+        st.markdown('#### Demand by specialty')
+        st.dataframe(pd.DataFrame([{'Specialty': name, 'Appointments': count} for name, count in insights.get('demand_by_specialty', {}).items()]).sort_values('Appointments', ascending=False), hide_index=True, width='stretch')
+        st.markdown('#### Demand by weekday')
+        st.dataframe(pd.DataFrame([{'Weekday': name, 'Appointments': count} for name, count in insights['weekday_volume'].items()]).sort_values('Appointments', ascending=False), hide_index=True, width='stretch')
+        st.markdown('#### Demand by location (top 10)')
+        locations = sorted(insights.get('location_appointments', {}).items(), key=lambda item: item[1]['appointments'], reverse=True)[:10]
+        st.dataframe(pd.DataFrame([{'Location': name, 'Appointments': values['appointments'], 'No-show rate': values['no_show_rate']} for name, values in locations]), hide_index=True, width='stretch')
+        st.markdown('#### Recommendations')
+        for recommendation in insights.get('recommendations', []):
+            st.markdown(f'- {recommendation}')
+        st.markdown('#### Health segments by place type')
+        st.json(insights.get('health_segments', {}))
     except (OSError, KeyError, json.JSONDecodeError) as exc:
         st.error(f'Generated insights are unavailable: {exc}')
     st.markdown("---")

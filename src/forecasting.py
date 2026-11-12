@@ -287,11 +287,69 @@ def train_and_evaluate_forecasting(
     # Return test predictions dataframe for plotting
     test_eval_df = test_df[['appointment_date', 'appointment_count']].copy()
     test_eval_df['Seasonal_Naive'] = pred_baseline
+    test_eval_df['Moving_Average'] = pred_ma
     test_eval_df['XGBoost'] = pred_xgb
     test_eval_df['RandomForest'] = pred_rf
     if 'SARIMAX' in models:
         test_eval_df['SARIMAX'] = pred_sarima
 
+    # Add diagnostics alongside the existing daily metrics. These values do not
+    # participate in model selection and do not alter the feature schema.
+    diagnostic_predictions = {
+        'Seasonal Naive (Lag 7)': test_eval_df['Seasonal_Naive'].to_numpy(),
+        '7-Day Moving Average': test_eval_df['Moving_Average'].to_numpy(),
+        'XGBoost Regressor': test_eval_df['XGBoost'].to_numpy(),
+        'Random Forest Regressor': test_eval_df['RandomForest'].to_numpy(),
+    }
+    if 'SARIMAX' in test_eval_df:
+        diagnostic_predictions['SARIMAX'] = test_eval_df['SARIMAX'].to_numpy()
+
+    weekly = test_eval_df[['appointment_date', 'appointment_count']].copy()
+    weekly['week'] = weekly['appointment_date'].dt.to_period('W-SUN')
+    weekly_metrics = {}
+    for model_name, predictions in diagnostic_predictions.items():
+        temp = weekly[['week', 'appointment_count']].copy()
+        temp['prediction'] = predictions
+        grouped = temp.groupby('week', observed=True)[['appointment_count', 'prediction']].sum()
+        metrics = evaluate_forecast(grouped['appointment_count'].to_numpy(), grouped['prediction'].to_numpy())
+        weekly_metrics[model_name] = {
+            'weeks': int(len(grouped)), 'r2': metrics['r2'], 'wape': metrics['wape']
+        }
+
+    restricted_metrics = {}
+    for model_name, metrics in one_step_metrics.items():
+        if 'error' in metrics or model_name not in diagnostic_predictions:
+            continue
+        actual = test_eval_df['appointment_count'].to_numpy()
+        prediction = diagnostic_predictions[model_name]
+        eligible = actual >= 10
+        restricted_metrics[model_name] = {
+            **evaluate_forecast(actual[eligible], prediction[eligible]),
+            'included_days': int(eligible.sum()),
+            'excluded_days': int((~eligible).sum()),
+        }
+
+    recursive_restricted = {}
+    for model_name in recursive_predictions:
+        if not recursive_predictions[model_name]:
+            continue
+        actual = np.asarray(recursive_truth[model_name], dtype=float)
+        prediction = np.asarray(recursive_predictions[model_name], dtype=float)
+        eligible = actual >= 10
+        recursive_restricted[model_name] = {
+            **evaluate_forecast(actual[eligible], prediction[eligible]),
+            'included_observations': int(eligible.sum()),
+            'excluded_observations': int((~eligible).sum()),
+        }
+
+    results['additional_metrics'] = {
+        'weekly_aggregate_one_step_ahead': weekly_metrics,
+        'days_with_at_least_10_appointments': {
+            'exclusion_rule': 'Include a daily evaluation observation only when actual appointment_count >= 10; exclude lower-volume days before calculating every metric.',
+            'one_step_ahead': restricted_metrics,
+            'recursive_14_day_rolling_origin': recursive_restricted,
+        },
+    }
     return results, best_model_name, best_model, test_eval_df
 
 
