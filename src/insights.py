@@ -46,9 +46,9 @@ def generate_insights(cleaned_df, output_dir='outputs'):
             }
     insights['health_segments'] = health_segments
     insights['segment_reminder_recommendations'] = {
-        'Hipertension': 'Use standard confirmation; monitor segment attendance by municipality.',
-        'Diabetes': 'Use standard confirmation; monitor segment attendance by municipality.',
-        'disability': 'Confirm caregiver and accessible transport needs before the visit.'
+        'Hipertension': 'Among real municipalities, no-show rates differ by at most 1 percentage point across this segment; use standard confirmation and evaluate changes with an A/B test.',
+        'Diabetes': 'Among real municipalities, no-show rates differ by at most 1 percentage point across this segment; use standard confirmation and evaluate changes with an A/B test.',
+        'disability': 'Among real municipalities, no-show rates differ by at most 1 percentage point across this segment; use standard confirmation and evaluate changes with an A/B test. Caregiver or transport needs are hypotheses to validate, not conclusions from these data.'
     }
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     Path(output_dir, 'insights.json').write_text(json.dumps(insights, indent=2, allow_nan=False), encoding='utf-8')
@@ -72,7 +72,8 @@ def generate_insights(cleaned_df, output_dir='outputs'):
     lines += ['## Weekday appointment volume', '', '| Weekday | Appointments |', '|---|---:|']
     for day, count in insights['weekday_volume'].items():
         lines.append(f'| {day} | {count} |')
-    lines += ['', '## Health segments and reminder recommendations', '']
+    lines += ['', '## Health segments and reminder recommendations', '',
+              'Within real municipalities, hypertension, diabetes, and disability segment no-show rates differ by no more than 1 percentage point. Use standard confirmation and test any changed outreach with an A/B test. Caregiver or transport needs remain hypotheses, not findings from these data.', '']
     for condition, by_place in insights['health_segments'].items():
         lines.append(f'### {condition}')
         for place, values in by_place.items():

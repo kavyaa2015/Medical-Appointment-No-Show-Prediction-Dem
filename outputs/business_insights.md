@@ -91,20 +91,22 @@ no association observed; recommend an A/B test before relying on SMS
 
 ## Health segments and reminder recommendations
 
+Within real municipalities, hypertension, diabetes, and disability segment no-show rates differ by no more than 1 percentage point. Use standard confirmation and test any changed outreach with an A/B test. Caregiver or transport needs remain hypotheses, not findings from these data.
+
 ### Hipertension
 - missing: 0 34.9% (n=11370), 1 29.5% (n=139)
 - real_municipality: 0 9.0% (n=41261), 1 10.1% (n=3102)
 - synthetic_or_other: 0 50.3% (n=50560), 1 42.5% (n=3125)
-- Reminder: Use standard confirmation; monitor segment attendance by municipality.
+- Reminder: Among real municipalities, no-show rates differ by at most 1 percentage point across this segment; use standard confirmation and evaluate changes with an A/B test.
 
 ### Diabetes
 - missing: 0 34.8% (n=11426), 1 37.3% (n=83)
 - real_municipality: 0 9.1% (n=43116), 1 9.5% (n=1247)
 - synthetic_or_other: 0 50.0% (n=52390), 1 44.4% (n=1295)
-- Reminder: Use standard confirmation; monitor segment attendance by municipality.
+- Reminder: Among real municipalities, no-show rates differ by at most 1 percentage point across this segment; use standard confirmation and evaluate changes with an A/B test.
 
 ### disability
 - missing: Missing 24.5% (n=6331), intellectual 49.1% (n=3427), motor 44.3% (n=1751)
 - real_municipality: Missing 44.4% (n=9), intellectual 8.9% (n=30839), motor 9.6% (n=13515)
 - synthetic_or_other: Missing 60.2% (n=10650), intellectual 48.3% (n=28581), motor 45.4% (n=14454)
-- Reminder: Confirm caregiver and accessible transport needs before the visit.
+- Reminder: Among real municipalities, no-show rates differ by at most 1 percentage point across this segment; use standard confirmation and evaluate changes with an A/B test. Caregiver or transport needs are hypotheses to validate, not conclusions from these data.

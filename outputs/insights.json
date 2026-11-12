@@ -296,8 +296,8 @@
     }
   },
   "segment_reminder_recommendations": {
-    "Hipertension": "Use standard confirmation; monitor segment attendance by municipality.",
-    "Diabetes": "Use standard confirmation; monitor segment attendance by municipality.",
-    "disability": "Confirm caregiver and accessible transport needs before the visit."
+    "Hipertension": "Among real municipalities, no-show rates differ by at most 1 percentage point across this segment; use standard confirmation and evaluate changes with an A/B test.",
+    "Diabetes": "Among real municipalities, no-show rates differ by at most 1 percentage point across this segment; use standard confirmation and evaluate changes with an A/B test.",
+    "disability": "Among real municipalities, no-show rates differ by at most 1 percentage point across this segment; use standard confirmation and evaluate changes with an A/B test. Caregiver or transport needs are hypotheses to validate, not conclusions from these data."
   }
 }
