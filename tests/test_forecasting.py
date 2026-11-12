@@ -41,6 +41,13 @@ def test_engineer_forecasting_features_leakage_free():
     assert pd.isna(feat['lag_1'].iloc[0])
 
 
+def test_forecast_features_exclude_weather():
+    assert not (set(FORECAST_FEATURES) & {
+        'average_temp_day', 'max_temp_day', 'average_rain_day',
+        'max_rain_day', 'storm_day_before'
+    })
+
+
 def test_evaluate_forecast():
     y_true = np.array([10.0, 20.0, 30.0, 0.0])
     y_pred = np.array([10.0, 22.0, 28.0, 2.0])
@@ -63,7 +70,7 @@ def test_forecast_future_demand_output():
     dates = pd.date_range('2021-01-01', periods=60, freq='D')
     hist_df = pd.DataFrame({
         'appointment_date': dates,
-        'appointment_count': np.random.randint(50, 200, size=60)
+        'appointment_count': np.random.default_rng(42).integers(50, 200, size=60)
     })
 
     future_df = forecast_future_demand(artifact, hist_df, horizon_days=14)

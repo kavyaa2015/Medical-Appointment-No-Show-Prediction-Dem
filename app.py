@@ -5,6 +5,7 @@ Interactive Streamlit Dashboard for Healthcare Operations & Resource Management.
 
 import time
 import os
+import json
 import joblib
 import numpy as np
 import pandas as pd
@@ -16,7 +17,6 @@ from src.data import (
     load_raw_data,
     clean_dataset,
     engineer_features,
-    normalize_place,
     TOP_MUNICIPALITIES,
     CATEGORICAL_FEATURES,
     NUMERICAL_FEATURES,
@@ -178,11 +178,6 @@ with tab_pred:
                 age = st.number_input("Patient Age", min_value=1, max_value=115, value=25, disabled=age_unknown)
 
             with c2:
-                place = st.selectbox(
-                    "City / Municipality",
-                    options=['ITAJAI', 'BALNEARIO CAMBORIU', 'CAMBORIU', 'NAVEGANTES', 'ITAPEMA', 'BOMBINHAS', 'PENHA', 'PORTO BELO', 'BALNEARIO PICARRAS', 'ILHOTA', 'LUIZ ALVES', 'OTHER', 'MISSING'],
-                    index=0
-                )
                 disability = st.selectbox("Disability Type", options=['intellectual', 'motor', 'Missing'], index=0)
                 shift = st.selectbox("Appointment Shift", options=['morning', 'afternoon'], index=0)
 
@@ -225,7 +220,7 @@ with tab_pred:
                 rain_day_before = st.checkbox("Rain Day Before", value=True)
                 storm_day_before = st.checkbox("Storm Day Before", value=True)
 
-            submit_btn = st.form_submit_button("⚡ Predict No-Show Risk", use_container_width=True)
+            submit_btn = st.form_submit_button("⚡ Predict No-Show Risk", width="stretch")
 
         if submit_btn:
             if max_temp < avg_temp:
@@ -236,8 +231,6 @@ with tab_pred:
                     'specialty': specialty,
                     'gender': gender,
                     'age': np.nan if age_unknown else float(age),
-                    'place': place,
-                    'place_clean': place,
                     'disability': disability,
                     'appointment_shift': shift,
                     'appointment_time': int(hour),
@@ -261,8 +254,12 @@ with tab_pred:
                     'appointment_date_continuous': pd.Timestamp(appointment_date).strftime('%Y-%m-%d')
                 }])
 
-                with LatencyTimer() as timer:
-                    pred_res = predict_no_show(clf_artifact, input_df, threshold=threshold_cutoff)
+                try:
+                    with LatencyTimer() as timer:
+                        pred_res = predict_no_show(clf_artifact, input_df, threshold=threshold_cutoff)
+                except Exception as exc:
+                    st.error(f"Prediction failed: {exc}")
+                    st.stop()
 
                 latency_ms = timer.elapsed_ms
                 latency_sec = timer.elapsed_sec
@@ -325,7 +322,7 @@ with tab_pred:
                     color_continuous_scale='Blues'
                 )
                 fig_imp.update_layout(yaxis={'categoryorder': 'total ascending'}, height=350)
-                st.plotly_chart(fig_imp, use_container_width=True)
+                st.plotly_chart(fig_imp, width="stretch")
 
 
 # =========================================================================
@@ -333,6 +330,7 @@ with tab_pred:
 # =========================================================================
 with tab_fore:
     st.header("Daily Appointment Demand Forecaster")
+    st.caption("Specialty and city forecasts are approximate (overall-series model applied to a filtered series).")
     st.markdown(
         "Forecast daily appointment volumes overall and across specialized rehabilitation services. "
         "Captures 7-day cyclicality, seasonal shifts, and helps clinic administrators optimize staffing schedules."
@@ -373,7 +371,9 @@ with tab_fore:
         with fc3:
             horizon = st.slider("Forecast Horizon (Days Ahead)", min_value=7, max_value=30, value=14, step=7)
 
-        run_forecast_btn = st.button("🚀 Generate Demand Forecast", use_container_width=True)
+        run_forecast_btn = st.button("🚀 Generate Demand Forecast", width="stretch")
+        if run_forecast_btn:
+            st.session_state['forecast_requested'] = True
         if df_data is None:
             st.caption("Overall forecasting uses the included daily aggregate. Add local `data/raw.csv` and rerun the pipeline to enable specialty and location filters.")
 
@@ -383,106 +383,106 @@ with tab_fore:
             if df_data is not None else shipped_daily_series
         )
 
-        with st.spinner("Generating recursive demand forecast..."):
-            with LatencyTimer() as f_timer:
-                future_forecast = forecast_future_demand(fore_artifact, daily_series, horizon_days=horizon)
+        if not st.session_state.get('forecast_requested', False):
+            st.info('Select Generate Demand Forecast to run this forecast.')
+        else:
+            try:
+                with st.spinner("Generating recursive demand forecast..."):
+                    with LatencyTimer() as f_timer:
+                        future_forecast = forecast_future_demand(fore_artifact, daily_series, horizon_days=horizon)
+            except Exception as exc:
+                st.error(f"Forecast failed: {exc}")
+                st.stop()
 
-        f_latency_ms = f_timer.elapsed_ms
+            f_latency_ms = f_timer.elapsed_ms
 
-        st.markdown(f"<span class='latency-tag'>Forecast generated in {f_latency_ms:.1f} ms</span>", unsafe_allow_html=True)
+            st.markdown(f"<span class='latency-tag'>Forecast generated in {f_latency_ms:.1f} ms</span>", unsafe_allow_html=True)
 
-        # Plot Historical + Forecast
-        history_window = daily_series.tail(60).copy()
+            # Plot Historical + Forecast
+            history_window = daily_series.tail(60).copy()
 
-        fig_ts = go.Figure()
-        # Historical trace
-        fig_ts.add_trace(go.Scatter(
-            x=history_window['appointment_date'],
-            y=history_window['appointment_count'],
-            mode='lines',
-            name='Historical Demand (Recent 60 Days)',
-            line=dict(color='#1f77b4', width=2)
-        ))
-        # Forecast trace
-        fig_ts.add_trace(go.Scatter(
-            x=future_forecast['appointment_date'],
-            y=future_forecast['predicted_appointments'],
-            mode='lines+markers',
-            name=f'Recursive Forecast ({horizon} Days)',
-            line=dict(color='#ff7f0e', width=2.5, dash='dash'),
-            marker=dict(size=6, color='#d62728')
-        ))
+            fig_ts = go.Figure()
+            # Historical trace
+            fig_ts.add_trace(go.Scatter(
+                x=history_window['appointment_date'],
+                y=history_window['appointment_count'],
+                mode='lines',
+                name='Historical Demand (Recent 60 Days)',
+                line=dict(color='#1f77b4', width=2)
+            ))
+            # Forecast trace
+            fig_ts.add_trace(go.Scatter(
+                x=future_forecast['appointment_date'],
+                y=future_forecast['predicted_appointments'],
+                mode='lines+markers',
+                name=f'Recursive Forecast ({horizon} Days)',
+                line=dict(color='#ff7f0e', width=2.5, dash='dash'),
+                marker=dict(size=6, color='#d62728')
+            ))
 
-        fig_ts.update_layout(
-            title=f"Daily Appointment Demand: Historical Baseline & {horizon}-Day Projected Forecast ({selected_specialty} | {selected_location})",
-            xaxis_title="Date",
-            yaxis_title="Daily Appointments",
-            hovermode="x unified",
-            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
-            height=450
-        )
-        st.plotly_chart(fig_ts, use_container_width=True)
+            fig_ts.update_layout(
+                title=f"Daily Appointment Demand: Historical Baseline & {horizon}-Day Projected Forecast ({selected_specialty} | {selected_location})",
+                xaxis_title="Date",
+                yaxis_title="Daily Appointments",
+                hovermode="x unified",
+                legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+                height=450
+            )
+            st.plotly_chart(fig_ts, width="stretch")
 
-        # Forecast Summary KPIs
-        tot_proj = int(future_forecast['predicted_appointments'].sum())
-        avg_proj = float(future_forecast['predicted_appointments'].mean())
-        peak_row = future_forecast.loc[future_forecast['predicted_appointments'].idxmax()]
-        weekend_proj = int(future_forecast[future_forecast['is_weekend'] == 1]['predicted_appointments'].sum())
+            # Forecast Summary KPIs
+            tot_proj = int(future_forecast['predicted_appointments'].sum())
+            avg_proj = float(future_forecast['predicted_appointments'].mean())
+            peak_row = future_forecast.loc[future_forecast['predicted_appointments'].idxmax()]
+            weekend_proj = int(future_forecast[future_forecast['is_weekend'] == 1]['predicted_appointments'].sum())
 
-        k1, k2, k3, k4 = st.columns(4)
-        with k1:
-            st.metric("Total Projected Appointments", f"{tot_proj:,}")
-        with k2:
-            st.metric("Avg Daily Projected Load", f"{avg_proj:.1f}")
-        with k3:
-            st.metric("Projected Peak Day", f"{peak_row['appointment_date'].strftime('%b %d')} ({peak_row['predicted_appointments']})")
-        with k4:
-            st.metric("Projected Weekend Volume", f"{weekend_proj:,}")
+            k1, k2, k3, k4 = st.columns(4)
+            with k1:
+                st.metric("Total Projected Appointments", f"{tot_proj:,}")
+            with k2:
+                st.metric("Avg Daily Projected Load", f"{avg_proj:.1f}")
+            with k3:
+                st.metric("Projected Peak Day", f"{peak_row['appointment_date'].strftime('%b %d')} ({peak_row['predicted_appointments']})")
+            with k4:
+                st.metric("Projected Weekend Volume", f"{weekend_proj:,}")
 
-        # Staffing Allocation Recommendations
-        st.subheader("Intelligent Staffing & Scheduling Recommendations")
-        # Estimate specialist hours (assuming ~45 min per appointment = 0.75 hours)
-        est_hours = tot_proj * 0.75
-        est_fte = est_hours / (horizon * 7.0)  # 7 productive hours per therapist per day
+            # Staffing Allocation Recommendations
+            st.subheader("Intelligent Staffing & Scheduling Recommendations")
+            # Estimate specialist hours (assuming ~45 min per appointment = 0.75 hours)
+            est_hours = tot_proj * 0.75
+            est_fte = est_hours / (horizon * 7.0)  # 7 productive hours per therapist per day
 
-        st.info(
-            f"**Resource Allocation Projection:**\n"
-            f"- Projected therapeutic load over {horizon} days requires approximately **{est_hours:,.0f} direct therapy hours**.\n"
-            f"- Recommended active specialist staffing: **~{max(1, int(round(est_fte)))} Full-Time Therapists** on duty during peak weekday shifts.\n"
-            f"- Peak anticipated volume falls on **{peak_row['day_of_week']} ({peak_row['appointment_date'].strftime('%Y-%m-%d')})**; ensure full shift coverage and minimal planned leave on this date."
-        )
+            st.info(
+                f"**Resource Allocation Projection:**\n"
+                f"- Projected therapeutic load over {horizon} days requires approximately **{est_hours:,.0f} direct therapy hours**.\n"
+                f"- Recommended active specialist staffing: **~{max(1, int(round(est_fte)))} Full-Time Therapists** on duty during peak weekday shifts.\n"
+                f"- Peak anticipated volume falls on **{peak_row['day_of_week']} ({peak_row['appointment_date'].strftime('%Y-%m-%d')})**; ensure full shift coverage and minimal planned leave on this date."
+            )
 
-        with st.expander("View Daily Forecast Table"):
-            st.dataframe(future_forecast[['appointment_date', 'day_of_week', 'predicted_appointments', 'is_weekend']], use_container_width=True)
+            with st.expander("View Daily Forecast Table"):
+                st.dataframe(future_forecast[['appointment_date', 'day_of_week', 'predicted_appointments', 'is_weekend']], width="stretch")
 
 
-# =========================================================================
-# TAB 3: OPERATIONAL INSIGHTS & DATA DICTIONARY
+    # =========================================================================
+    # TAB 3: OPERATIONAL INSIGHTS & DATA DICTIONARY
 # =========================================================================
 with tab_insights:
     st.header("Comprehensive Operational Insights & Architecture")
 
-    tab3_c1, tab3_c2 = st.columns(2)
-    with tab3_c1:
-        st.markdown("### Key Operational Findings")
-        st.markdown("""
-        - **Weather Shocks:** Extreme cold temperatures elevate no-show rates to **52.9%** (compared to 26.1% on mild days). Transportation barriers represent a primary driver for rehabilitation patients with mobility challenges.
-        - **Specialty Variance:** Pedagogy (16.0%) and Nursing (19.8%) have the lowest no-show rates, whereas unassigned appointments have no-show rates reaching **52.8%**.
-        - **Caregiver Cushion:** Appointments where a patient is accompanied by a companion have a **29.0%** no-show rate versus **34.8%** for unassisted patients.
-        - **Staffing Alignment:** Day-of-week demand variance exhibits marked mid-week surges (Thursdays average 258 appointments) and Sunday drops.
-        """)
-    with tab3_c2:
-        st.markdown("### Actionable Recommendations")
-        st.markdown("""
-        1. **Cold & Rain Advisory Protocols:** Trigger automated SMS/WhatsApp alerts offering transport guidance when forecast predicts heavy rain or temperature shocks.
-        2. **Intelligent Overbooking:** Apply smart overbooking buffers (15-20%) exclusively to appointment slots flagged as **High Risk**.
-        3. **Adolescent & Young Adult Outreach:** Provide multi-touch confirmations (48h and 2h prior) for patients in the 19–40 age bracket.
-        4. **Registration Quality:** Mandate specialty assignment at registration to eliminate high-risk unassigned appointments.
-        """)
-
+    try:
+        with open('outputs/insights.json', encoding='utf-8') as insights_file:
+            insights = json.load(insights_file)
+        st.info(insights['sms_conclusion'])
+        for key in ['place_type', 'heat_intensity_by_place_type', 'age_group', 'specialty', 'companion', 'shift', 'weekday_volume', 'health_segments']:
+            st.markdown(f"#### {key.replace('_', ' ').title()}")
+            st.json(insights[key])
+        st.markdown('#### Segment reminder recommendations')
+        st.json(insights['segment_reminder_recommendations'])
+    except (OSError, KeyError, json.JSONDecodeError) as exc:
+        st.error(f'Generated insights are unavailable: {exc}')
     st.markdown("---")
     st.subheader("Dataset Dictionary")
     dict_df = pd.DataFrame([
         {"Feature": k, "Description": v} for k, v in DATA_DICTIONARY.items()
     ])
-    st.dataframe(dict_df, use_container_width=True, height=400)
+    st.dataframe(dict_df, width="stretch", height=400)

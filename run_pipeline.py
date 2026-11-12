@@ -5,8 +5,12 @@ Trains classification and forecasting models, exports artifacts, and generates r
 
 import os
 import json
+import platform
+import sklearn, pandas as pd_version, numpy as np_version, xgboost, statsmodels
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -24,7 +28,6 @@ from src.classification import (
 )
 from src.forecasting import (
     build_daily_time_series,
-    build_weather_profile,
     train_and_evaluate_forecasting,
     save_forecasting_artifact,
 )
@@ -34,6 +37,57 @@ from src.utils import (
     plot_feature_importance,
     plot_forecast_comparison,
 )
+from src.insights import generate_insights
+
+
+def update_readme_from_reports():
+    """Fill README data and target summaries exclusively from generated JSON."""
+    with open('outputs/insights.json', encoding='utf-8') as handle:
+        insights = json.load(handle)
+    with open('outputs/classification_report.json', encoding='utf-8') as handle:
+        classification = json.load(handle)
+    with open('outputs/forecasting_report.json', encoding='utf-8') as handle:
+        forecasting = json.load(handle)
+    versions = {'numpy': np_version.__version__, 'pandas': pd_version.__version__,
+                'scikit_learn': sklearn.__version__, 'xgboost': xgboost.__version__,
+                'statsmodels': statsmodels.__version__}
+    classification['python_version'] = forecasting['python_version'] = platform.python_version()
+    classification['library_versions'] = forecasting['library_versions'] = versions
+    with open('outputs/classification_report.json', 'w', encoding='utf-8') as handle:
+        json.dump(classification, handle, indent=2)
+    with open('outputs/forecasting_report.json', 'w', encoding='utf-8') as handle:
+        json.dump(forecasting, handle, indent=2)
+    place_rows = ['| Place type | Appointments | No-show rate |', '|---|---:|---:|']
+    for group, values in insights['place_type'].items():
+        place_rows.append(f"| {group} | {values['appointments']:,} | {values['no_show_rate']:.1%} |")
+    variant = classification['deployed_variant']
+    best_name = classification['variants'][variant]['best_model']
+    clf = classification['variants'][variant]['models'][best_name]
+    forecast_name = forecasting['best_model']
+    forecast = forecasting['protocols']['recursive_14_day_rolling_origin'][forecast_name]
+    audits = [
+        ('Positive-class F1 > 0.70', clf['f1_score_tuned'], clf['f1_score_tuned'] > 0.70),
+        ('Forecast R² > 0.65', forecast['r2'], forecast['r2'] > 0.65),
+        ('Forecast MAPE < 20%', forecast['mape'], forecast['mape'] < 20),
+    ]
+    classifier_rows = ['| Variant | Selected model | ROC-AUC | Positive-class F1 |', '|---|---|---:|---:|']
+    for name, variant_report in classification['variants'].items():
+        selected = variant_report['models'][variant_report['best_model']]
+        classifier_rows.append(f"| {name} | {variant_report['best_model']} | {selected['roc_auc']:.4f} | {selected['f1_score_tuned']:.4f} |")
+    target_rows = [f"- **{label}:** {'MET' if passed else 'MISSED'} ({value:.4f})." for label, value, passed in audits]
+    readme = open('README.md', encoding='utf-8').read()
+    replacements = [
+        ('<!-- GENERATED_PLACE_STATS_START -->', '<!-- GENERATED_PLACE_STATS_END -->', '\n'.join(place_rows)),
+        ('<!-- GENERATED_TARGET_AUDIT_START -->', '<!-- GENERATED_TARGET_AUDIT_END -->',
+         f"Deployed classifier: {variant} / {best_name}. Forecast selected by recursive WAPE: {forecast_name}.\n\n" +
+         '\n'.join(classifier_rows) + '\n\n' + '\n'.join(target_rows))
+    ]
+    for start_marker, end_marker, content in replacements:
+        start = readme.index(start_marker) + len(start_marker)
+        end = readme.index(end_marker, start)
+        readme = readme[:start] + '\n' + content + '\n' + readme[end:]
+    with open('README.md', 'w', encoding='utf-8') as handle:
+        handle.write(readme)
 
 
 def run():
@@ -79,7 +133,8 @@ def run():
     spec_rates = feat_df.groupby('specialty')['target'].agg(['mean', 'count']).reset_index()
     spec_rates = spec_rates[spec_rates['count'] > 200].sort_values('mean', ascending=False)
     plt.barh(spec_rates['specialty'], spec_rates['mean'] * 100, color='#1f77b4')
-    plt.axvline(31.8, color='red', linestyle='--', label='Average No-Show (31.8%)')
+    overall_no_show_rate = float(feat_df['target'].mean() * 100)
+    plt.axvline(overall_no_show_rate, color='red', linestyle='--', label=f'Average No-Show ({overall_no_show_rate:.1f}%)')
     plt.title('No-Show Rate (%) by Medical Rehabilitation Specialty')
     plt.xlabel('No-Show Rate (%)')
     plt.legend()
@@ -112,7 +167,7 @@ def run():
     daily_all = build_daily_time_series(clean_df)
     plt.figure(figsize=(14, 5))
     plt.plot(daily_all['appointment_date'], daily_all['appointment_count'], color='#3b528b', lw=1.2)
-    plt.title('Total Daily Appointment Demand Across Full 498-Day Calendar (2020-01-01 to 2021-05-12)')
+    plt.title(f"Total Daily Appointment Demand ({len(daily_all)} days: {daily_all['appointment_date'].min():%Y-%m-%d} to {daily_all['appointment_date'].max():%Y-%m-%d})")
     plt.xlabel('Date')
     plt.ylabel('Daily Appointments')
     plt.tight_layout()
@@ -124,27 +179,40 @@ def run():
     X_train, X_test, y_train, y_test = prepare_classification_data('data/raw.csv', test_size=0.2, random_state=42)
     print(f"Classification train samples: {len(X_train)}, test samples: {len(X_test)}")
 
-    clf_results, best_clf_name, best_pipeline = train_and_compare_models(
-        X_train, y_train, X_test, y_test, output_dir='models'
-    )
+    clf_variants = {}
+    for variant, drop_cols in [('full', []), ('no_place', ['place_clean'])]:
+        variant_results, best_clf_name, best_pipeline = train_and_compare_models(
+            X_train.drop(columns=drop_cols), y_train, X_test.drop(columns=drop_cols), y_test,
+            output_dir='models', variant=variant
+        )
+        clf_variants[variant] = {'models': variant_results, 'best_model': best_clf_name}
+        best_metadata = variant_results[best_clf_name]
+        save_classifier_artifact(
+            pipeline=best_pipeline,
+            metadata={
+                'model_name': best_clf_name, 'variant': variant,
+                'optimal_threshold': best_metadata['optimal_threshold'],
+                'metrics': best_metadata, 'all_models': variant_results,
+                'python_version': platform.python_version(),
+                'library_versions': {'numpy': np_version.__version__, 'pandas': pd_version.__version__,
+                                     'scikit_learn': sklearn.__version__, 'xgboost': xgboost.__version__}
+            },
+            filepath=f"models/no_show_model_{variant}.joblib"
+        )
+        if variant == 'no_place':
+            clf_results, best_clf_name, best_metadata = variant_results, best_clf_name, best_metadata
+            save_classifier_artifact(best_pipeline, {
+                'model_name': best_clf_name, 'variant': variant,
+                'optimal_threshold': best_metadata['optimal_threshold'], 'metrics': best_metadata,
+                'python_version': platform.python_version(),
+                'library_versions': {'numpy': np_version.__version__, 'pandas': pd_version.__version__,
+                                     'scikit_learn': sklearn.__version__, 'xgboost': xgboost.__version__}
+            }, 'models/no_show_model.joblib')
     print("\nClassification Comparison Results:")
     for mname, mres in clf_results.items():
         print(f"  {mname:22s} | ROC-AUC: {mres['roc_auc']:.4f} | F1 (Tuned): {mres['f1_score_tuned']:.4f} (thresh={mres['optimal_threshold']:.2f}) | F1 (Def 0.5): {mres['f1_score_default']:.4f}")
 
     print(f"\nBest Classification Model: {best_clf_name}")
-    best_metadata = clf_results[best_clf_name]
-
-    # Save best classification pipeline
-    save_classifier_artifact(
-        pipeline=best_pipeline,
-        metadata={
-            'model_name': best_clf_name,
-            'optimal_threshold': best_metadata['optimal_threshold'],
-            'metrics': best_metadata,
-            'all_models': clf_results
-        },
-        filepath='models/no_show_model.joblib'
-    )
     print("Saved classification artifact: models/no_show_model.joblib")
 
     # Feature Importance
@@ -153,7 +221,11 @@ def run():
     plot_feature_importance(feat_imp_df, top_n=15, save_path='outputs/figures/feature_importance.png')
     plot_confusion_matrix(best_metadata['confusion_matrix_tuned'], ['Show', 'No-Show'], 'outputs/figures/confusion_matrix.png')
 
-    save_metrics_report(clf_results, 'outputs/classification_report.json')
+    save_metrics_report({'variants': clf_variants, 'deployed_variant': 'no_place',
+                         'python_version': platform.python_version(),
+                         'library_versions': {'numpy': np_version.__version__, 'pandas': pd_version.__version__,
+                                              'scikit_learn': sklearn.__version__, 'xgboost': xgboost.__version__}},
+                        'outputs/classification_report.json')
 
     # 4. Train Forecasting Models
     print("\n[Phase 4] Training and evaluating time series demand forecasters...")
@@ -161,11 +233,10 @@ def run():
         daily_all, test_ratio=0.20
     )
     print("\nForecasting Comparison Results (Chronological Split):")
-    for fname, fres in ts_results.items():
-        if 'error' in fres:
-            print(f"  {fname:25s} | Error: {fres['error']}")
-        else:
-            print(f"  {fname:25s} | MAE: {fres['mae']:7.2f} | RMSE: {fres['rmse']:7.2f} | R2: {fres['r2']:6.4f} | MAPE: {fres['mape']:6.2f}% | sMAPE: {fres['smape']:6.2f}%")
+    for protocol_name, model_results in ts_results['protocols'].items():
+        print(f"  {protocol_name}")
+        for fname, fres in model_results.items():
+            print(f"    {fname:25s} | MAE: {fres['mae']:7.2f} | RMSE: {fres['rmse']:7.2f} | R2: {fres['r2']:6.4f} | MAPE: {fres['mape']:6.2f}% | WAPE: {fres['wape']:6.2f}%")
 
     print(f"\nBest Forecasting Approach: {best_ts_name}")
 
@@ -173,76 +244,27 @@ def run():
         model=best_ts_model,
         model_name=best_ts_name,
         metadata={
-            'metrics': ts_results[best_ts_name],
-            'all_models': ts_results
-            ,'weather_profile': build_weather_profile(daily_all)
+            'metrics': ts_results['protocols']['recursive_14_day_rolling_origin'][best_ts_name],
+            'all_models': ts_results,
+            'python_version': platform.python_version(),
+            'library_versions': {'numpy': np_version.__version__, 'pandas': pd_version.__version__,
+                                 'scikit_learn': sklearn.__version__, 'xgboost': xgboost.__version__,
+                                 'statsmodels': statsmodels.__version__}
         },
         filepath='models/demand_forecast_model.joblib'
     )
     print("Saved forecasting artifact: models/demand_forecast_model.joblib")
 
     plot_forecast_comparison(test_eval_df, 'outputs/figures/forecast_test_comparison.png')
-    save_metrics_report(ts_results, 'outputs/forecasting_report.json')
+    save_metrics_report({**ts_results, 'python_version': platform.python_version(),
+                         'library_versions': {'numpy': np_version.__version__, 'pandas': pd_version.__version__,
+                                              'scikit_learn': sklearn.__version__, 'xgboost': xgboost.__version__,
+                                              'statsmodels': statsmodels.__version__}},
+                        'outputs/forecasting_report.json')
 
-    # 5. Generate Business Insights
-    print("\n[Phase 5] Compiling business insights...")
-    insights_text = f"""# Business Insights & Operational Recommendations
-
-## Executive Summary
-This document summarizes analytical findings from the Center of Specialization in Physical and Intellectual Rehabilitation (CER) dataset (109,557 unique appointments across 498 continuous calendar days from Jan 2020 to May 2021).
-
----
-
-## 1. Key Drivers of Patient No-Show Behavior
-1. **Severe Weather Sensitivity**:
-   - During **heavy cold** conditions, the patient no-show rate rises to **52.9%** (vs. baseline average 31.8%).
-   - Heavy warm conditions also elevate no-shows to **38.8%**.
-   - Rehabilitation patients (many with motor or intellectual disabilities) encounter severe transport hurdles during extreme weather.
-2. **Missing Clinical Specialty or Registration (`sem especialidade`)**:
-   - Appointments without an assigned specialty have a **40.6% to 52.8%** no-show rate.
-   - Administrative ambiguity correlates heavily with appointment abandonment.
-3. **Age & Demographics**:
-   - Young adults (19–40 years) exhibit the highest no-show rate at **45.5%**, followed by adolescents (13–18 years) at **35.1%**.
-   - Elderly patients (60+) demonstrate significantly higher commitment, with only **22.4%** no-show rate.
-   - Pediatric patients accompanied by caregivers have lower no-shows (**27.7%**).
-4. **Caregiver Presence**:
-   - Patients requiring a companion have a **29.0%** no-show rate compared to **34.8%** for unassisted patients. Caregiver engagement acts as a stabilizing attendance factor.
-5. **Shift Timing**:
-   - Morning appointments experience a **33.0%** no-show rate compared to **30.7%** in the afternoon.
-
----
-
-## 2. Demand Patterns Across Specialties & Geography
-1. **Specialty Demand Concentration**:
-   - Psychotherapy (28,645 appointments), Speech Therapy (22,322 appointments), and Physiotherapy (21,004 appointments) comprise over **80%** of specialized capacity.
-   - Pedagogy and nursing consultations experience the highest punctuality/attendance rates (>80%).
-2. **Geographic Concentration**:
-   - Itajaí represents the single largest municipal patient origin (over 20,500 appointments), followed by Balneário Camboriú and Camboriú.
-   - Outlying municipalities exhibit higher transit-related cancellation risks during inclement weather.
-
----
-
-## 3. Operational Staffing Implications
-1. **Dynamic Staff Scheduling**:
-   - Daily appointment demand displays pronounced 7-day cyclicality with mid-week peaks and reduced Sunday operating volumes.
-   - Demand forecasting allows clinical directors to align specialist schedules 7 to 14 days in advance, mitigating specialist idle hours.
-2. **Buffer Overbooking on High-Risk Slots**:
-   - Instead of uniform booking, apply targeted double-booking ONLY on slots flagged as **High Risk** (probability > 0.65).
-   - *Estimated Hypothetical Impact*: Assuming an outreach and buffer scheduling intervention reaches 25% of high-risk patients and reallocates 15% of open slots, clinic capacity utilization could recover approximately 4.5% to 6.2% of currently lost hours. (Note: This is an operational projection subject to clinical trial validation).
-
----
-
-## 4. Patient Engagement & Intervention Strategies
-1. **Weather-Triggered Reminders**:
-   - Deploy automated SMS reminders and transport advisories 24 hours prior when rain/cold weather thresholds are forecasted.
-2. **Targeted Young-Adult Engagement**:
-   - Patients aged 19–40 should receive multi-channel confirmations (SMS + WhatsApp/call) 48 hours and 2 hours prior to scheduled time.
-3. **Caregiver Inclusivity**:
-   - For patients marked as requiring a companion, include the caregiver's contact in reminder pipelines.
-"""
-    with open('outputs/business_insights.md', 'w', encoding='utf-8') as f:
-        f.write(insights_text)
-
+    # 5. Derive business insights directly from cleaned appointment rows.
+    generate_insights(clean_df, 'outputs')
+    update_readme_from_reports()
     print("Business insights exported: outputs/business_insights.md")
     print("\nPIPELINE EXECUTION COMPLETED SUCCESSFULLY!")
 

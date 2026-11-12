@@ -1,53 +1,110 @@
-# Business Insights & Operational Recommendations
+# Business insights (computed from cleaned appointment data)
 
-## Executive Summary
-This document summarizes analytical findings from the Center of Specialization in Physical and Intellectual Rehabilitation (CER) dataset (109,557 unique appointments across 498 continuous calendar days from Jan 2020 to May 2021).
+**SMS:** no association observed; recommend an A/B test before relying on SMS.
 
----
+## No-show by place type
 
-## 1. Key Drivers of Patient No-Show Behavior
-1. **Severe Weather Sensitivity**:
-   - During **heavy cold** conditions, the patient no-show rate rises to **52.9%** (vs. baseline average 31.8%).
-   - Heavy warm conditions also elevate no-shows to **38.8%**.
-   - Rehabilitation patients (many with motor or intellectual disabilities) encounter severe transport hurdles during extreme weather.
-2. **Missing Clinical Specialty or Registration (`sem especialidade`)**:
-   - Appointments without an assigned specialty have a **40.6% to 52.8%** no-show rate.
-   - Administrative ambiguity correlates heavily with appointment abandonment.
-3. **Age & Demographics**:
-   - Young adults (19–40 years) exhibit the highest no-show rate at **45.5%**, followed by adolescents (13–18 years) at **35.1%**.
-   - Elderly patients (60+) demonstrate significantly higher commitment, with only **22.4%** no-show rate.
-   - Pediatric patients accompanied by caregivers have lower no-shows (**27.7%**).
-4. **Caregiver Presence**:
-   - Patients requiring a companion have a **29.0%** no-show rate compared to **34.8%** for unassisted patients. Caregiver engagement acts as a stabilizing attendance factor.
-5. **Shift Timing**:
-   - Morning appointments experience a **33.0%** no-show rate compared to **30.7%** in the afternoon.
+| Segment | Appointments | No-show rate |
+|---|---:|---:|
+| missing | 11509 | 34.8% |
+| real_municipality | 44363 | 9.1% |
+| synthetic_or_other | 53685 | 49.9% |
 
----
+## Age group (includes Unknown)
 
-## 2. Demand Patterns Across Specialties & Geography
-1. **Specialty Demand Concentration**:
-   - Psychotherapy (28,645 appointments), Speech Therapy (22,322 appointments), and Physiotherapy (21,004 appointments) comprise over **80%** of specialized capacity.
-   - Pedagogy and nursing consultations experience the highest punctuality/attendance rates (>80%).
-2. **Geographic Concentration**:
-   - Itajaí represents the single largest municipal patient origin (over 20,500 appointments), followed by Balneário Camboriú and Camboriú.
-   - Outlying municipalities exhibit higher transit-related cancellation risks during inclement weather.
+| Segment | Appointments | No-show rate |
+|---|---:|---:|
+| 0-12 | 44417 | 27.7% |
+| 13-18 | 20790 | 35.1% |
+| 19-40 | 10567 | 45.5% |
+| 41-60 | 4633 | 30.6% |
+| 60+ | 6221 | 22.4% |
+| Unknown | 22929 | 33.3% |
 
----
+## Specialty
 
-## 3. Operational Staffing Implications
-1. **Dynamic Staff Scheduling**:
-   - Daily appointment demand displays pronounced 7-day cyclicality with mid-week peaks and reduced Sunday operating volumes.
-   - Demand forecasting allows clinical directors to align specialist schedules 7 to 14 days in advance, mitigating specialist idle hours.
-2. **Buffer Overbooking on High-Risk Slots**:
-   - Instead of uniform booking, apply targeted double-booking ONLY on slots flagged as **High Risk** (probability > 0.65).
-   - *Estimated Hypothetical Impact*: Assuming an outreach and buffer scheduling intervention reaches 25% of high-risk patients and reallocates 15% of open slots, clinic capacity utilization could recover approximately 4.5% to 6.2% of currently lost hours. (Note: This is an operational projection subject to clinical trial validation).
+| Segment | Appointments | No-show rate |
+|---|---:|---:|
+| Missing | 20100 | 40.7% |
+| assist | 635 | 26.9% |
+| enf | 1681 | 19.8% |
+| occupational therapy | 11318 | 23.9% |
+| pedagogo | 3535 | 16.0% |
+| physiotherapy | 21001 | 34.4% |
+| psychotherapy | 28642 | 32.3% |
+| sem especialidade | 324 | 52.8% |
+| speech therapy | 22321 | 27.9% |
 
----
+## Companion
 
-## 4. Patient Engagement & Intervention Strategies
-1. **Weather-Triggered Reminders**:
-   - Deploy automated SMS reminders and transport advisories 24 hours prior when rain/cold weather thresholds are forecasted.
-2. **Targeted Young-Adult Engagement**:
-   - Patients aged 19–40 should receive multi-channel confirmations (SMS + WhatsApp/call) 48 hours and 2 hours prior to scheduled time.
-3. **Caregiver Inclusivity**:
-   - For patients marked as requiring a companion, include the caregiver's contact in reminder pipelines.
+| Segment | Appointments | No-show rate |
+|---|---:|---:|
+| 0 | 52591 | 34.8% |
+| 1 | 56966 | 29.0% |
+
+## Shift
+
+| Segment | Appointments | No-show rate |
+|---|---:|---:|
+| afternoon | 59321 | 30.7% |
+| morning | 50236 | 33.1% |
+
+## Heat intensity by place type
+
+| Place type | Heat category | Appointments | No-show rate |
+|---|---|---:|---:|
+| missing | cold | 3129 | 35.7% |
+| missing | heavy_cold | 1474 | 39.0% |
+| missing | heavy_warm | 119 | 51.3% |
+| missing | mild | 4673 | 30.8% |
+| missing | warm | 2114 | 38.7% |
+| real_municipality | cold | 12836 | 9.7% |
+| real_municipality | heavy_cold | 722 | 11.9% |
+| real_municipality | heavy_warm | 509 | 11.4% |
+| real_municipality | mild | 21217 | 7.9% |
+| real_municipality | warm | 9079 | 10.7% |
+| synthetic_or_other | cold | 14221 | 50.7% |
+| synthetic_or_other | heavy_cold | 6114 | 61.3% |
+| synthetic_or_other | heavy_warm | 1102 | 50.1% |
+| synthetic_or_other | mild | 21003 | 43.4% |
+| synthetic_or_other | warm | 11245 | 54.7% |
+
+## SMS reminder status
+
+no association observed; recommend an A/B test before relying on SMS
+
+## Specialty data quality
+
+`sem especialidade`: 324 appointments, 52.8% no-show. Blank specialty (`Missing`): 20100 appointments, 40.7% no-show.
+
+## Weekday appointment volume
+
+| Weekday | Appointments |
+|---|---:|
+| Friday | 17024 |
+| Monday | 16236 |
+| Saturday | 16968 |
+| Sunday | 11094 |
+| Thursday | 18369 |
+| Tuesday | 15536 |
+| Wednesday | 14330 |
+
+## Health segments and reminder recommendations
+
+### Hipertension
+- missing: 0 34.9% (n=11370), 1 29.5% (n=139)
+- real_municipality: 0 9.0% (n=41261), 1 10.1% (n=3102)
+- synthetic_or_other: 0 50.3% (n=50560), 1 42.5% (n=3125)
+- Reminder: Use standard confirmation; monitor segment attendance by municipality.
+
+### Diabetes
+- missing: 0 34.8% (n=11426), 1 37.3% (n=83)
+- real_municipality: 0 9.1% (n=43116), 1 9.5% (n=1247)
+- synthetic_or_other: 0 50.0% (n=52390), 1 44.4% (n=1295)
+- Reminder: Use standard confirmation; monitor segment attendance by municipality.
+
+### disability
+- missing: Missing 24.5% (n=6331), intellectual 49.1% (n=3427), motor 44.3% (n=1751)
+- real_municipality: Missing 44.4% (n=9), intellectual 8.9% (n=30839), motor 9.6% (n=13515)
+- synthetic_or_other: Missing 60.2% (n=10650), intellectual 48.3% (n=28581), motor 45.4% (n=14454)
+- Reminder: Confirm caregiver and accessible transport needs before the visit.

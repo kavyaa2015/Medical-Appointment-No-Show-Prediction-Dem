@@ -23,7 +23,7 @@ def test_normalize_place():
     assert normalize_place('NAVEGANTES') == 'NAVEGANTES'
     assert normalize_place(None) == 'MISSING'
     assert normalize_place(np.nan) == 'MISSING'
-    assert normalize_place('New Michael') == 'OTHER'
+    assert normalize_place('New Michael') == 'UNKNOWN_SYNTHETIC'
 
 
 def test_clean_dataset_removes_duplicates():
@@ -63,6 +63,13 @@ def test_engineer_features():
     assert feat['has_chronic_condition'].iloc[0] == 1
     assert feat['temp_range'].iloc[0] == 6.0
     assert feat['rain_range'].iloc[0] == 4.0
+
+
+def test_missing_age_uses_unknown_band():
+    row = pd.DataFrame([{'age': np.nan, 'appointment_date': pd.Timestamp('2020-01-01')}])
+    feat = engineer_features(row)
+    assert feat['age_group'].iloc[0] == 'Unknown'
+    assert feat['age_is_missing'].iloc[0] == 1
 
 
 def test_prepare_classification_data_no_leakage():

@@ -1,0 +1,303 @@
+{
+  "place_type": {
+    "missing": {
+      "appointments": 11509,
+      "no_show_rate": 0.34842297332522376
+    },
+    "real_municipality": {
+      "appointments": 44363,
+      "no_show_rate": 0.09104433875076078
+    },
+    "synthetic_or_other": {
+      "appointments": 53685,
+      "no_show_rate": 0.49887305578839525
+    }
+  },
+  "heat_intensity_by_place_type": {
+    "missing": {
+      "cold": {
+        "appointments": 3129,
+        "no_show_rate": 0.35698306168104826
+      },
+      "heavy_cold": {
+        "appointments": 1474,
+        "no_show_rate": 0.39009497964721845
+      },
+      "heavy_warm": {
+        "appointments": 119,
+        "no_show_rate": 0.5126050420168067
+      },
+      "mild": {
+        "appointments": 4673,
+        "no_show_rate": 0.307725230044939
+      },
+      "warm": {
+        "appointments": 2114,
+        "no_show_rate": 0.38741721854304634
+      }
+    },
+    "real_municipality": {
+      "cold": {
+        "appointments": 12836,
+        "no_show_rate": 0.09660330320972266
+      },
+      "heavy_cold": {
+        "appointments": 722,
+        "no_show_rate": 0.11911357340720222
+      },
+      "heavy_warm": {
+        "appointments": 509,
+        "no_show_rate": 0.11394891944990176
+      },
+      "mild": {
+        "appointments": 21217,
+        "no_show_rate": 0.07927605222227459
+      },
+      "warm": {
+        "appointments": 9079,
+        "no_show_rate": 0.10717039321511179
+      }
+    },
+    "synthetic_or_other": {
+      "cold": {
+        "appointments": 14221,
+        "no_show_rate": 0.507348287743478
+      },
+      "heavy_cold": {
+        "appointments": 6114,
+        "no_show_rate": 0.612855740922473
+      },
+      "heavy_warm": {
+        "appointments": 1102,
+        "no_show_rate": 0.5009074410163339
+      },
+      "mild": {
+        "appointments": 21003,
+        "no_show_rate": 0.43431890682283486
+      },
+      "warm": {
+        "appointments": 11245,
+        "no_show_rate": 0.5465540240106714
+      }
+    }
+  },
+  "sms_received": {
+    "0": {
+      "appointments": 75392,
+      "no_show_rate": 0.31761990662139217
+    },
+    "1": {
+      "appointments": 34165,
+      "no_show_rate": 0.3186009073613347
+    }
+  },
+  "sms_conclusion": "no association observed; recommend an A/B test before relying on SMS",
+  "age_group": {
+    "0-12": {
+      "appointments": 44417,
+      "no_show_rate": 0.2765832901816872
+    },
+    "13-18": {
+      "appointments": 20790,
+      "no_show_rate": 0.35103415103415103
+    },
+    "19-40": {
+      "appointments": 10567,
+      "no_show_rate": 0.45490678527491246
+    },
+    "41-60": {
+      "appointments": 4633,
+      "no_show_rate": 0.3060651845456508
+    },
+    "60+": {
+      "appointments": 6221,
+      "no_show_rate": 0.2239189840861598
+    },
+    "Unknown": {
+      "appointments": 22929,
+      "no_show_rate": 0.33276636573771207
+    }
+  },
+  "specialty": {
+    "Missing": {
+      "appointments": 20100,
+      "no_show_rate": 0.40676616915422886
+    },
+    "assist": {
+      "appointments": 635,
+      "no_show_rate": 0.2692913385826772
+    },
+    "enf": {
+      "appointments": 1681,
+      "no_show_rate": 0.19750148720999405
+    },
+    "occupational therapy": {
+      "appointments": 11318,
+      "no_show_rate": 0.23864640395829653
+    },
+    "pedagogo": {
+      "appointments": 3535,
+      "no_show_rate": 0.15983026874115983
+    },
+    "physiotherapy": {
+      "appointments": 21001,
+      "no_show_rate": 0.3436979191467073
+    },
+    "psychotherapy": {
+      "appointments": 28642,
+      "no_show_rate": 0.32340618671880456
+    },
+    "sem especialidade": {
+      "appointments": 324,
+      "no_show_rate": 0.5277777777777778
+    },
+    "speech therapy": {
+      "appointments": 22321,
+      "no_show_rate": 0.27928856234039695
+    }
+  },
+  "companion": {
+    "0": {
+      "appointments": 52591,
+      "no_show_rate": 0.34848167937479796
+    },
+    "1": {
+      "appointments": 56966,
+      "no_show_rate": 0.28971667310325455
+    }
+  },
+  "shift": {
+    "afternoon": {
+      "appointments": 59321,
+      "no_show_rate": 0.3071930682220462
+    },
+    "morning": {
+      "appointments": 50236,
+      "no_show_rate": 0.33059957002946094
+    }
+  },
+  "weekday_volume": {
+    "Friday": 17024,
+    "Monday": 16236,
+    "Saturday": 16968,
+    "Sunday": 11094,
+    "Thursday": 18369,
+    "Tuesday": 15536,
+    "Wednesday": 14330
+  },
+  "health_segments": {
+    "Hipertension": {
+      "missing": {
+        "0": {
+          "appointments": 11370,
+          "no_show_rate": 0.3490765171503958
+        },
+        "1": {
+          "appointments": 139,
+          "no_show_rate": 0.2949640287769784
+        }
+      },
+      "real_municipality": {
+        "0": {
+          "appointments": 41261,
+          "no_show_rate": 0.09027895591478637
+        },
+        "1": {
+          "appointments": 3102,
+          "no_show_rate": 0.10122501611863315
+        }
+      },
+      "synthetic_or_other": {
+        "0": {
+          "appointments": 50560,
+          "no_show_rate": 0.5034612341772152
+        },
+        "1": {
+          "appointments": 3125,
+          "no_show_rate": 0.42464
+        }
+      }
+    },
+    "Diabetes": {
+      "missing": {
+        "0": {
+          "appointments": 11426,
+          "no_show_rate": 0.34824085419219325
+        },
+        "1": {
+          "appointments": 83,
+          "no_show_rate": 0.37349397590361444
+        }
+      },
+      "real_municipality": {
+        "0": {
+          "appointments": 43116,
+          "no_show_rate": 0.09094071806290008
+        },
+        "1": {
+          "appointments": 1247,
+          "no_show_rate": 0.0946271050521251
+        }
+      },
+      "synthetic_or_other": {
+        "0": {
+          "appointments": 52390,
+          "no_show_rate": 0.5002290513456766
+        },
+        "1": {
+          "appointments": 1295,
+          "no_show_rate": 0.444015444015444
+        }
+      }
+    },
+    "disability": {
+      "missing": {
+        "Missing": {
+          "appointments": 6331,
+          "no_show_rate": 0.24498499447164745
+        },
+        "intellectual": {
+          "appointments": 3427,
+          "no_show_rate": 0.4911000875401226
+        },
+        "motor": {
+          "appointments": 1751,
+          "no_show_rate": 0.4431753283837807
+        }
+      },
+      "real_municipality": {
+        "Missing": {
+          "appointments": 9,
+          "no_show_rate": 0.4444444444444444
+        },
+        "intellectual": {
+          "appointments": 30839,
+          "no_show_rate": 0.08868640357988261
+        },
+        "motor": {
+          "appointments": 13515,
+          "no_show_rate": 0.09618941916389197
+        }
+      },
+      "synthetic_or_other": {
+        "Missing": {
+          "appointments": 10650,
+          "no_show_rate": 0.6023474178403756
+        },
+        "intellectual": {
+          "appointments": 28581,
+          "no_show_rate": 0.4828732374654491
+        },
+        "motor": {
+          "appointments": 14454,
+          "no_show_rate": 0.45426871454268714
+        }
+      }
+    }
+  },
+  "segment_reminder_recommendations": {
+    "Hipertension": "Use standard confirmation; monitor segment attendance by municipality.",
+    "Diabetes": "Use standard confirmation; monitor segment attendance by municipality.",
+    "disability": "Confirm caregiver and accessible transport needs before the visit."
+  }
+}

@@ -25,7 +25,7 @@ TOP_MUNICIPALITIES = [
 
 
 def normalize_place(place_val: Optional[str]) -> str:
-    """Normalize city/municipality text, mapping to top 11 AMFRI cities, OTHER, or MISSING."""
+    """Normalize cities, mapping unrecognized synthetic municipality values to UNKNOWN_SYNTHETIC."""
     if pd.isna(place_val):
         return 'MISSING'
     val = str(place_val).encode('ascii', 'ignore').decode().strip().upper()
@@ -53,7 +53,7 @@ def normalize_place(place_val: Optional[str]) -> str:
         return 'ILHOTA'
     if 'LUIZ ALVES' in val:
         return 'LUIZ ALVES'
-    return 'OTHER'
+    return 'UNKNOWN_SYNTHETIC'
 
 
 def load_raw_data(filepath: str = 'data/raw.csv') -> pd.DataFrame:
@@ -151,11 +151,12 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     # Age indicators and categories
     if 'age' in df_feat.columns:
         df_feat['age_is_missing'] = df_feat['age'].isna().astype(int)
-        # Binned age group (imputing temporary median for binning if missing)
-        temp_age = df_feat['age'].fillna(18)
+        # Missing age remains explicit rather than being assigned to a pediatric band.
         bins = [-1, 12, 18, 40, 60, 150]
         labels = ['0-12', '13-18', '19-40', '41-60', '60+']
-        df_feat['age_group'] = pd.cut(temp_age, bins=bins, labels=labels).astype(str)
+        df_feat['age_group'] = pd.cut(df_feat['age'], bins=bins, labels=labels).astype(object)
+        df_feat.loc[df_feat['age'].isna(), 'age_group'] = 'Unknown'
+        df_feat['age_group'] = df_feat['age_group'].astype(str)
     else:
         df_feat['age_is_missing'] = 0
         df_feat['age_group'] = '19-40'

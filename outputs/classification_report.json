@@ -1,68 +1,161 @@
 {
-  "Logistic Regression": {
-    "roc_auc": 0.7622336381881079,
-    "f1_score_tuned": 0.6259690973163459,
-    "precision_tuned": 0.5029183726805471,
-    "recall_tuned": 0.8287395923054838,
-    "accuracy_tuned": 0.6851496896677619,
-    "confusion_matrix_tuned": [
-      [
-        9240,
-        5706
-      ],
-      [
-        1193,
-        5773
-      ]
-    ],
-    "optimal_threshold": 0.52,
-    "threshold_selection": "stratified validation split within training data",
-    "f1_score_default": 0.6252662974009374,
-    "precision_default": 0.4970364098221846,
-    "recall_default": 0.8426643697961528
+  "variants": {
+    "full": {
+      "models": {
+        "Logistic Regression": {
+          "roc_auc": 0.7622245807944297,
+          "f1_score_tuned": 0.6258200943447378,
+          "precision_tuned": 0.5028317504574367,
+          "recall_tuned": 0.8284524834912432,
+          "accuracy_tuned": 0.6850584154801023,
+          "confusion_matrix_tuned": [
+            [
+              9240,
+              5706
+            ],
+            [
+              1195,
+              5771
+            ]
+          ],
+          "optimal_threshold": 0.52,
+          "threshold_selection": "stratified validation split within training data",
+          "f1_score_default": 0.6250799062433412,
+          "precision_default": 0.49695070303235644,
+          "recall_default": 0.8422337065747918,
+          "variant": "full"
+        },
+        "Random Forest": {
+          "roc_auc": 0.780389130989276,
+          "f1_score_tuned": 0.635016111707841,
+          "precision_tuned": 0.507293633087352,
+          "recall_tuned": 0.8486936548952053,
+          "accuracy_tuned": 0.6898503103322381,
+          "confusion_matrix_tuned": [
+            [
+              9204,
+              5742
+            ],
+            [
+              1054,
+              5912
+            ]
+          ],
+          "optimal_threshold": 0.48000000000000004,
+          "threshold_selection": "stratified validation split within training data",
+          "f1_score_default": 0.6354725155699973,
+          "precision_default": 0.5102182798504218,
+          "recall_default": 0.8422337065747918,
+          "variant": "full"
+        },
+        "XGBoost": {
+          "roc_auc": 0.7859970071605085,
+          "f1_score_tuned": 0.6399042645778938,
+          "precision_tuned": 0.5151515151515151,
+          "recall_tuned": 0.8443870226815964,
+          "accuracy_tuned": 0.6978824388462943,
+          "confusion_matrix_tuned": [
+            [
+              9410,
+              5536
+            ],
+            [
+              1084,
+              5882
+            ]
+          ],
+          "optimal_threshold": 0.4600000000000001,
+          "threshold_selection": "stratified validation split within training data",
+          "f1_score_default": 0.6395798783858485,
+          "precision_default": 0.5200467457749011,
+          "recall_default": 0.8304622451909274,
+          "variant": "full"
+        }
+      },
+      "best_model": "XGBoost"
+    },
+    "no_place": {
+      "models": {
+        "Logistic Regression": {
+          "roc_auc": 0.6623671132432388,
+          "f1_score_tuned": 0.5139404320106575,
+          "precision_tuned": 0.38435809849131797,
+          "recall_tuned": 0.7753373528567327,
+          "accuracy_tuned": 0.5337714494341,
+          "confusion_matrix_tuned": [
+            [
+              6295,
+              8651
+            ],
+            [
+              1565,
+              5401
+            ]
+          ],
+          "optimal_threshold": 0.43000000000000005,
+          "threshold_selection": "stratified validation split within training data",
+          "f1_score_default": 0.501990080215541,
+          "precision_default": 0.4376935397757608,
+          "recall_default": 0.588429514786104,
+          "variant": "no_place"
+        },
+        "Random Forest": {
+          "roc_auc": 0.7506196486699425,
+          "f1_score_tuned": 0.594992471979033,
+          "precision_tuned": 0.4864593781344032,
+          "recall_tuned": 0.765862761986793,
+          "accuracy_tuned": 0.6685377875136911,
+          "confusion_matrix_tuned": [
+            [
+              9314,
+              5632
+            ],
+            [
+              1631,
+              5335
+            ]
+          ],
+          "optimal_threshold": 0.43000000000000005,
+          "threshold_selection": "stratified validation split within training data",
+          "f1_score_default": 0.5791949817041296,
+          "precision_default": 0.5315423362916767,
+          "recall_default": 0.6362331323571634,
+          "variant": "no_place"
+        },
+        "XGBoost": {
+          "roc_auc": 0.762860970755126,
+          "f1_score_tuned": 0.6116433308769345,
+          "precision_tuned": 0.5053864168618267,
+          "recall_tuned": 0.7744760264140109,
+          "accuracy_tuned": 0.6873402701715955,
+          "confusion_matrix_tuned": [
+            [
+              9666,
+              5280
+            ],
+            [
+              1571,
+              5395
+            ]
+          ],
+          "optimal_threshold": 0.44000000000000006,
+          "threshold_selection": "stratified validation split within training data",
+          "f1_score_default": 0.5985584456283297,
+          "precision_default": 0.5312048058738458,
+          "recall_default": 0.6854722939994258,
+          "variant": "no_place"
+        }
+      },
+      "best_model": "XGBoost"
+    }
   },
-  "Random Forest": {
-    "roc_auc": 0.7817380391209483,
-    "f1_score_tuned": 0.6334077143767931,
-    "precision_tuned": 0.5027834008097166,
-    "recall_tuned": 0.8557278208440999,
-    "accuracy_tuned": 0.6851040525739321,
-    "confusion_matrix_tuned": [
-      [
-        9051,
-        5895
-      ],
-      [
-        1005,
-        5961
-      ]
-    ],
-    "optimal_threshold": 0.45000000000000007,
-    "threshold_selection": "stratified validation split within training data",
-    "f1_score_default": 0.6351212661373089,
-    "precision_default": 0.5091365722698536,
-    "recall_default": 0.8439563594602354
-  },
-  "XGBoost": {
-    "roc_auc": 0.7867642490859716,
-    "f1_score_tuned": 0.6392156862745098,
-    "precision_tuned": 0.5150078988941548,
-    "recall_tuned": 0.8423772609819121,
-    "accuracy_tuned": 0.6976998904709748,
-    "confusion_matrix_tuned": [
-      [
-        9420,
-        5526
-      ],
-      [
-        1098,
-        5868
-      ]
-    ],
-    "optimal_threshold": 0.4600000000000001,
-    "threshold_selection": "stratified validation split within training data",
-    "f1_score_default": 0.6396855276270623,
-    "precision_default": 0.5206380677721701,
-    "recall_default": 0.829313809933965
+  "deployed_variant": "no_place",
+  "python_version": "3.14.7",
+  "library_versions": {
+    "numpy": "2.5.3",
+    "pandas": "3.0.6",
+    "scikit_learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "statsmodels": "0.15.0"
   }
 }

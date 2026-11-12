@@ -14,12 +14,6 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 from xgboost import XGBRegressor
 from sklearn.ensemble import RandomForestRegressor
 
-WEATHER_FEATURES = [
-    'average_temp_day', 'max_temp_day', 'average_rain_day',
-    'max_rain_day', 'storm_day_before'
-]
-
-
 def build_daily_time_series(
     df: pd.DataFrame,
     specialty: Optional[str] = None,
@@ -108,13 +102,6 @@ def engineer_forecasting_features(daily_df: pd.DataFrame) -> pd.DataFrame:
     ts_df['log_rolling_mean_14'] = log_counts.shift(1).rolling(14, min_periods=1).mean()
     ts_df['log_rolling_mean_28'] = log_counts.shift(1).rolling(28, min_periods=1).mean()
 
-    # Weather is an exogenous feature, available as a daily aggregate.  Any
-    # residual gaps are explicitly filled from the historical median.
-    for column in WEATHER_FEATURES:
-        if column not in ts_df:
-            ts_df[column] = 0.0
-        ts_df[column] = ts_df[column].fillna(ts_df[column].median()).fillna(0.0)
-
     return ts_df
 
 
@@ -122,7 +109,7 @@ FORECAST_FEATURES = [
     'dayofweek', 'day', 'month', 'quarter', 'dayofyear', 'is_weekend',
     'log_lag_1', 'log_lag_2', 'log_lag_3', 'log_lag_7', 'log_lag_14', 'log_lag_21',
     'log_rolling_mean_7', 'log_rolling_std_7', 'log_rolling_mean_14',
-    'log_rolling_mean_28', *WEATHER_FEATURES
+    'log_rolling_mean_28'
 ]
 
 
@@ -228,15 +215,73 @@ def train_and_evaluate_forecasting(
             enforce_invertibility=False
         )
         sarima_fit = sarima_model.fit(disp=False)
-        pred_sarima = np.clip(sarima_fit.forecast(steps=len(test_df)), a_min=0, a_max=None)
+        rolling_fit = sarima_fit
+        pred_sarima = []
+        for observed in y_test:
+            pred_sarima.append(float(max(0.0, rolling_fit.forecast(steps=1)[0])))
+            rolling_fit = rolling_fit.append([observed], refit=False)
+        pred_sarima = np.asarray(pred_sarima)
         results['SARIMAX'] = evaluate_forecast(y_test, pred_sarima)
-        models['SARIMAX'] = sarima_fit
+        models['SARIMAX'] = rolling_fit
     except Exception as e:
         results['SARIMAX'] = {'error': str(e), 'mae': 999.0, 'rmse': 999.0, 'mape': 999.0, 'smape': 999.0, 'r2': -9.0}
 
-    # Best model selection by lowest MAE
-    model_candidates = [k for k in ['XGBoost Regressor', 'Random Forest Regressor', 'SARIMAX'] if 'error' not in results[k]]
-    best_model_name = min(model_candidates, key=lambda k: results[k]['mae'])
+    # Rolling-origin protocol: origins are seven days apart and each predicts
+    # recursively for up to fourteen days using only prior observations/predictions.
+    recursive_truth, recursive_predictions = {}, {}
+    names = ['Seasonal Naive (Lag 7)', '7-Day Moving Average', 'XGBoost Regressor', 'Random Forest Regressor', 'SARIMAX']
+    for name in names:
+        recursive_truth[name], recursive_predictions[name] = [], []
+    for origin in range(split_idx, len(valid_df), 7):
+        history_counts = valid_df.iloc[:origin]['appointment_count'].astype(float).tolist()
+        recursive_histories = {name: list(history_counts) for name in names}
+        try:
+            sarimax_origin = SARIMAX(history_counts, order=(1, 1, 1), seasonal_order=(1, 0, 1, 7),
+                                      enforce_stationarity=False, enforce_invertibility=False).fit(disp=False)
+            sarima_horizon = np.clip(sarimax_origin.forecast(steps=14), a_min=0, a_max=None)
+        except Exception:
+            sarima_horizon = np.asarray([])
+        for step in range(14):
+            target_idx = origin + step
+            if target_idx >= len(valid_df):
+                break
+            date = valid_df.iloc[target_idx]['appointment_date']
+            recursive_truth['Seasonal Naive (Lag 7)'].append(float(valid_df.iloc[target_idx]['appointment_count']))
+            naive_value = recursive_histories['Seasonal Naive (Lag 7)'][-7] if len(recursive_histories['Seasonal Naive (Lag 7)']) >= 7 else recursive_histories['Seasonal Naive (Lag 7)'][-1]
+            recursive_predictions['Seasonal Naive (Lag 7)'].append(naive_value)
+            recursive_histories['Seasonal Naive (Lag 7)'].append(naive_value)
+            recursive_truth['7-Day Moving Average'].append(float(valid_df.iloc[target_idx]['appointment_count']))
+            ma_value = float(np.mean(recursive_histories['7-Day Moving Average'][-7:]))
+            recursive_predictions['7-Day Moving Average'].append(ma_value)
+            recursive_histories['7-Day Moving Average'].append(ma_value)
+            for name, model in [('XGBoost Regressor', xgb_reg), ('Random Forest Regressor', random_forest)]:
+                model_history = recursive_histories[name]
+                hist = pd.DataFrame({'appointment_date': pd.date_range(end=valid_df.iloc[origin - 1]['appointment_date'],
+                                     periods=len(model_history), freq='D'), 'appointment_count': model_history})
+                one = forecast_future_demand({'model': model, 'model_name': name}, hist, horizon_days=1)
+                model_value = float(one['predicted_appointments'].iloc[0])
+                recursive_truth[name].append(float(valid_df.iloc[target_idx]['appointment_count']))
+                recursive_predictions[name].append(model_value)
+                recursive_histories[name].append(model_value)
+            if 'SARIMAX' in models:
+                sarima_value = float(sarima_horizon[step]) if len(sarima_horizon) > step else (history_counts[-7] if len(history_counts) >= 7 else history_counts[-1])
+                recursive_truth['SARIMAX'].append(float(valid_df.iloc[target_idx]['appointment_count']))
+                recursive_predictions['SARIMAX'].append(sarima_value)
+                recursive_histories['SARIMAX'].append(sarima_value)
+            history_counts.append(float(valid_df.iloc[target_idx]['appointment_count']))
+            # For model recursion, append each model's own prediction is handled by
+            # the forecast function's internal running history.
+    recursive_metrics = {name: evaluate_forecast(np.asarray(recursive_truth[name]), np.asarray(values))
+                         for name, values in recursive_predictions.items() if values}
+    one_step_metrics = results.copy()
+    results = {'protocols': {'one_step_ahead': one_step_metrics,
+                             'recursive_14_day_rolling_origin': recursive_metrics}}
+
+    # Select among all evaluated models by recursive rolling-origin WAPE.
+    model_candidates = [name for name in recursive_metrics if 'error' not in one_step_metrics.get(name, {})]
+    best_model_name = min(model_candidates, key=lambda name: recursive_metrics[name]['wape'])
+    results['best_model'] = best_model_name
+    results['selection_metric'] = 'recursive_14_day_rolling_origin.wape'
     best_model = models.get(best_model_name, None)
 
     # Return test predictions dataframe for plotting
@@ -248,18 +293,6 @@ def train_and_evaluate_forecasting(
         test_eval_df['SARIMAX'] = pred_sarima
 
     return results, best_model_name, best_model, test_eval_df
-
-
-def build_weather_profile(daily_df: pd.DataFrame) -> Dict[str, Dict[str, float]]:
-    """Build a day-of-year climatology for future dates without observed weather."""
-    available = [column for column in WEATHER_FEATURES if column in daily_df]
-    if not available:
-        return {}
-    profile = daily_df.assign(dayofyear=daily_df['appointment_date'].dt.dayofyear)
-    return {
-        str(day): {column: float(value) for column, value in values.items()}
-        for day, values in profile.groupby('dayofyear')[available].median().iterrows()
-    }
 
 
 def save_forecasting_artifact(
@@ -303,11 +336,6 @@ def forecast_future_demand(
     future_records = []
 
     running_history = history[['appointment_date', 'appointment_count']].copy()
-    weather_profile = artifact.get('metadata', {}).get('weather_profile', {})
-    historical_weather = {
-        column: float(history[column].median()) if column in history else 0.0
-        for column in WEATHER_FEATURES
-    }
 
     for target_date in future_dates:
         # Build lag features dynamically from running history
@@ -332,7 +360,6 @@ def forecast_future_demand(
         log_rolling_std_7 = np.std(last_log_counts[-7:]) if len(last_log_counts) >= 7 else 0.0
         log_rolling_14 = np.mean(last_log_counts[-14:]) if len(last_log_counts) >= 14 else np.mean(last_log_counts)
         log_rolling_28 = np.mean(last_log_counts[-28:]) if len(last_log_counts) >= 28 else np.mean(last_log_counts)
-        weather = weather_profile.get(str(dayofyear), historical_weather)
 
         row_feat = {
             'dayofweek': dayofweek,
@@ -347,8 +374,6 @@ def forecast_future_demand(
             'log_rolling_mean_28': log_rolling_28,
             **log_lags
         }
-        row_feat.update({column: float(weather.get(column, historical_weather[column])) for column in WEATHER_FEATURES})
-
         # Artifacts written before new feature releases remain usable.  New
         # artifacts record the complete schema; legacy models receive only
         # the columns on which they were trained.

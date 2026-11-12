@@ -35,12 +35,14 @@ from src.data import (
 )
 
 
-def build_preprocessor() -> ColumnTransformer:
+def build_preprocessor(categorical_features=None, numerical_features=None) -> ColumnTransformer:
     """
     Construct preprocessing ColumnTransformer.
     Numerical: Median Imputer + Standard Scaler
     Categorical: Most Frequent Imputer + OneHotEncoder (handle_unknown='ignore')
     """
+    categorical_features = categorical_features or CATEGORICAL_FEATURES
+    numerical_features = numerical_features or NUMERICAL_FEATURES
     num_pipeline = Pipeline([
         ('imputer', SimpleImputer(strategy='median')),
         ('scaler', StandardScaler())
@@ -53,8 +55,8 @@ def build_preprocessor() -> ColumnTransformer:
 
     preprocessor = ColumnTransformer(
         transformers=[
-            ('num', num_pipeline, NUMERICAL_FEATURES),
-            ('cat', cat_pipeline, CATEGORICAL_FEATURES)
+            ('num', num_pipeline, numerical_features),
+            ('cat', cat_pipeline, categorical_features)
         ],
         remainder='drop'
     )
@@ -66,7 +68,8 @@ def train_and_compare_models(
     y_train: pd.Series,
     X_test: pd.DataFrame,
     y_test: pd.Series,
-    output_dir: str = 'models'
+    output_dir: str = 'models',
+    variant: str = 'full'
 ) -> Tuple[Dict[str, Any], str, Any]:
     """
     Train Logistic Regression, Random Forest, and XGBoost.
@@ -112,7 +115,9 @@ def train_and_compare_models(
     fitted_pipelines = {}
 
     for name, clf in models.items():
-        preprocessor = build_preprocessor()
+        categorical_features = [c for c in CATEGORICAL_FEATURES if c in X_train.columns]
+        numerical_features = [c for c in NUMERICAL_FEATURES if c in X_train.columns]
+        preprocessor = build_preprocessor(categorical_features, numerical_features)
         pipe = Pipeline([
             ('preprocessor', preprocessor),
             ('classifier', clf)
@@ -166,6 +171,9 @@ def train_and_compare_models(
         }
         fitted_pipelines[name] = pipe
 
+    for name, metrics in results.items():
+        metrics['variant'] = variant
+
     # Select best model based on ROC-AUC + tuned F1
     best_model_name = max(results.keys(), key=lambda k: results[k]['roc_auc'] + results[k]['f1_score_tuned'])
     best_pipeline = fitted_pipelines[best_model_name]
@@ -179,8 +187,9 @@ def extract_feature_importance(pipeline: Pipeline) -> pd.DataFrame:
     classifier = pipeline.named_steps['classifier']
 
     cat_encoder = preprocessor.named_transformers_['cat'].named_steps['ohe']
-    cat_feature_names = list(cat_encoder.get_feature_names_out(CATEGORICAL_FEATURES))
-    all_feature_names = NUMERICAL_FEATURES + cat_feature_names
+    categorical_features = list(preprocessor.transformers_[1][2])
+    cat_feature_names = list(cat_encoder.get_feature_names_out(categorical_features))
+    all_feature_names = list(preprocessor.transformers_[0][2]) + cat_feature_names
 
     if hasattr(classifier, 'feature_importances_'):
         importances = classifier.feature_importances_
