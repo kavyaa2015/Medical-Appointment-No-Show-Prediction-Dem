@@ -141,9 +141,9 @@ st.markdown(
 )
 
 tab_pred, tab_fore, tab_insights = st.tabs([
-    "🎯 Tab 1: No-Show Predictor",
-    "📈 Tab 2: Demand Forecaster",
-    "📊 Tab 3: Operational Insights & Data Dictionary"
+    "No-Show Predictor",
+    "Demand Forecaster",
+    "Operational Insights & Data Dictionary"
 ])
 
 # =========================================================================
@@ -223,20 +223,21 @@ with tab_pred:
             with h5:
                 scholarship = st.checkbox("Bolsa Família Support", value=False)
 
-            st.subheader("3. Environmental & Weather Forecast for Appointment Day")
+            st.subheader("3. Environmental & Weather Estimates")
+            st.caption("Weather inputs are optional estimates; keep the typical-day defaults when conditions are unknown.")
             w1, w2, w3, w4 = st.columns(4)
             with w1:
                 avg_temp = st.slider("Average Temp (°C)", min_value=10.0, max_value=40.0, value=22.0, step=0.5)
                 max_temp = st.slider("Max Temp (°C)", min_value=10.0, max_value=45.0, value=26.0, step=0.5)
             with w2:
-                avg_rain = st.number_input("Average Rain (mm)", min_value=0.0, max_value=50.0, value=0.5, step=0.1)
-                max_rain = st.number_input("Max Rain (mm)", min_value=0.0, max_value=100.0, value=2.0, step=0.5)
+                avg_rain = st.number_input("Average Rain (mm)", min_value=0.0, max_value=50.0, value=0.0, step=0.1)
+                max_rain = st.number_input("Max Rain (mm)", min_value=0.0, max_value=100.0, value=0.0, step=0.5)
             with w3:
                 heat_intensity = st.selectbox("Heat Intensity", options=['cold', 'mild', 'warm', 'heavy_cold', 'heavy_warm'], index=1)
                 rain_intensity = st.selectbox("Rain Intensity", options=['no_rain', 'weak', 'moderate', 'heavy'], index=0)
             with w4:
-                rain_day_before = st.checkbox("Rain Day Before", value=True)
-                storm_day_before = st.checkbox("Storm Day Before", value=True)
+                rain_day_before = st.checkbox("Rain Day Before", value=False)
+                storm_day_before = st.checkbox("Storm Day Before", value=False)
 
             submit_btn = st.form_submit_button("⚡ Predict No-Show Risk", width="stretch")
 
@@ -361,41 +362,18 @@ with tab_fore:
     if fore_artifact is None or shipped_daily_series is None:
         st.warning("⚠️ Forecasting artifact or `data/daily_series.csv` is unavailable. Restore the repository files or run the training pipeline.")
     else:
-        meta_ts = fore_artifact.get('metadata', {})
-        best_fore_name = fore_artifact.get('model_name', 'Forecasting Model')
-        ts_metrics = meta_ts.get('metrics', {})
-
-        m1, m2, m3, m4, m5 = st.columns(5)
-        with m1:
-            st.metric("Forecasting Engine", best_fore_name)
-        with m2:
-            st.metric("Test MAE", metric_value(ts_metrics, 'mae', '.1f'))
-        with m3:
-            st.metric("Test RMSE", metric_value(ts_metrics, 'rmse', '.1f'))
-        with m4:
-            st.metric("Test R² Score", metric_value(ts_metrics, 'r2', '.4f'))
-        with m5:
-            st.metric("Test sMAPE", f"{metric_value(ts_metrics, 'smape', '.1f')}%" if ts_metrics.get('smape') is not None else "Unavailable")
-
-        st.markdown("---")
-
         fc1, fc2, fc3 = st.columns(3)
         with fc1:
             spec_options = ['All'] + sorted(list(df_data['specialty'].dropna().unique())) if df_data is not None else ['All']
-            selected_specialty = st.selectbox("Filter Specialty", options=spec_options, index=0, disabled=df_data is None)
+            selected_specialty = st.selectbox("Filter Specialty", options=spec_options, index=0)
         with fc2:
             loc_options = ['All'] + TOP_MUNICIPALITIES if df_data is not None else ['All']
-            selected_location = st.selectbox("Filter Location / Municipality", options=loc_options, index=0, disabled=df_data is None)
+            selected_location = st.selectbox("Filter Location / Municipality", options=loc_options, index=0)
         with fc3:
             horizon = st.slider("Forecast Horizon (Days Ahead)", min_value=7, max_value=30, value=14, step=7)
 
-        run_forecast_btn = st.button("🚀 Generate Demand Forecast", width="stretch")
-        if run_forecast_btn:
-            st.session_state['forecast_requested'] = True
-        if df_data is None:
-            st.caption("Overall forecasting uses the included daily aggregate. Add local `data/raw.csv` and rerun the pipeline to enable specialty and location filters.")
-
-        # Use the dedicated specialty model for an unfiltered location when available.
+        # Keep both filters active together. Use a specialty-level model only
+        # when no location subset is selected; other combinations stay marked approximate.
         selected_fore_artifact = fore_artifact
         specialty_model_used = False
         if selected_specialty != 'All' and selected_location == 'All':
@@ -408,7 +386,6 @@ with tab_fore:
         elif specialty_model_used:
             st.caption(f"Using the dedicated model trained on the {selected_specialty} appointment series.")
 
-        # Build daily series
         daily_series = (
             build_daily_time_series(df_data, specialty=selected_specialty, location=selected_location)
             if df_data is not None else shipped_daily_series
@@ -421,17 +398,43 @@ with tab_fore:
         weekly_metrics = additional.get('weekly_aggregate_one_step_ahead', {})
         restricted = additional.get('days_with_at_least_10_appointments', {})
         restricted_protocol = restricted.get('recursive_14_day_rolling_origin', {})
-        diagnostic_model_name = selected_fore_artifact.get('model_name', best_fore_name)
+        selected_model_name = selected_fore_artifact.get('model_name', 'Forecasting Model')
+        selected_metrics = selected_fore_artifact.get('metadata', {}).get('metrics', {})
+
+        m1, m2, m3, m4, m5 = st.columns(5)
+        with m1:
+            st.metric("Forecasting Engine", selected_model_name)
+        with m2:
+            st.metric("Test MAE", metric_value(selected_metrics, 'mae', '.1f'))
+        with m3:
+            st.metric("Test RMSE", metric_value(selected_metrics, 'rmse', '.1f'))
+        with m4:
+            st.metric("Test R2 Score", metric_value(selected_metrics, 'r2', '.4f'))
+        with m5:
+            st.metric("Test sMAPE", f"{metric_value(selected_metrics, 'smape', '.1f')}%" if selected_metrics.get('smape') is not None else "Unavailable")
+
+        recursive_wape = selected_metrics.get('wape')
+        if recursive_wape is not None:
+            reliability = 'low' if recursive_wape >= 50 else 'moderate' if recursive_wape >= 20 else 'higher'
+            st.caption(f"Reliability: {reliability} - typical daily error is about {recursive_wape:.0f}% of volume; use as a planning guide, not a schedule.")
+
+        st.markdown("---")
         diagnostic_rows = []
-        weekly_row = weekly_metrics.get(diagnostic_model_name)
+        weekly_row = weekly_metrics.get(selected_model_name)
         if weekly_row:
             diagnostic_rows.append({'Evaluation': 'Weekly aggregate (one-step)', 'R-squared': weekly_row.get('r2'), 'WAPE (%)': weekly_row.get('wape'), 'Included units': weekly_row.get('weeks')})
-        volume_row = restricted_protocol.get(diagnostic_model_name)
+        volume_row = restricted_protocol.get(selected_model_name)
         if volume_row:
             diagnostic_rows.append({'Evaluation': 'Recursive days with actual count >= 10', 'R-squared': volume_row.get('r2'), 'WAPE (%)': volume_row.get('wape'), 'Included units': volume_row.get('included_observations')})
         if diagnostic_rows:
-            st.caption("Additional evaluation diagnostics (reported alongside daily test metrics). Low-volume exclusion: actual daily count < 10 is excluded before metric calculation.")
+            st.caption("Additional evaluation diagnostics. Days with actual counts below 10 are excluded from the restricted metrics.")
             st.dataframe(pd.DataFrame(diagnostic_rows), hide_index=True, width='stretch')
+
+        run_forecast_btn = st.button("Generate Demand Forecast", width="stretch")
+        if run_forecast_btn:
+            st.session_state['forecast_requested'] = True
+        if df_data is None:
+            st.caption("Overall forecasting uses the included daily aggregate. Add local `data/raw.csv` and rerun the pipeline to enable specialty and location filters.")
 
         if not st.session_state.get('forecast_requested', False):
             st.info('Select Generate Demand Forecast to run this forecast.')
@@ -545,19 +548,39 @@ with tab_insights:
         st.divider()
         st.info(insights['sms_conclusion'])
         st.markdown('#### Top observed factors')
-        st.json(insights.get('top_factors', {}))
+        factor_rows = []
+        for factor_name, groups in insights.get('top_factors', {}).items():
+            for group_name, values in groups.items():
+                factor_rows.append({
+                    'Factor': factor_name.replace('_', ' ').title(),
+                    'Group': group_name,
+                    'Appointments': values['appointments'],
+                    'No-show rate': f"{values['no_show_rate']:.1%}",
+                })
+        st.dataframe(pd.DataFrame(factor_rows), hide_index=True, width='stretch')
         st.markdown('#### Demand by specialty')
         st.dataframe(pd.DataFrame([{'Specialty': name, 'Appointments': count} for name, count in insights.get('demand_by_specialty', {}).items()]).sort_values('Appointments', ascending=False), hide_index=True, width='stretch')
         st.markdown('#### Demand by weekday')
         st.dataframe(pd.DataFrame([{'Weekday': name, 'Appointments': count} for name, count in insights['weekday_volume'].items()]).sort_values('Appointments', ascending=False), hide_index=True, width='stretch')
         st.markdown('#### Demand by location (top 10)')
         locations = sorted(insights.get('location_appointments', {}).items(), key=lambda item: item[1]['appointments'], reverse=True)[:10]
-        st.dataframe(pd.DataFrame([{'Location': name, 'Appointments': values['appointments'], 'No-show rate': values['no_show_rate']} for name, values in locations]), hide_index=True, width='stretch')
+        st.dataframe(pd.DataFrame([{'Location': name, 'Appointments': values['appointments'], 'No-show rate': f"{values['no_show_rate']:.1%}"} for name, values in locations]), hide_index=True, width='stretch')
         st.markdown('#### Recommendations')
         for recommendation in insights.get('recommendations', []):
             st.markdown(f'- {recommendation}')
         st.markdown('#### Health segments by place type')
-        st.json(insights.get('health_segments', {}))
+        health_rows = []
+        for measure, place_groups in insights.get('health_segments', {}).items():
+            for place_type, segments in place_groups.items():
+                for segment_name, values in segments.items():
+                    health_rows.append({
+                        'Health measure': measure.replace('_', ' ').title(),
+                        'Place type': place_type.replace('_', ' ').title(),
+                        'Segment': segment_name,
+                        'Appointments': values['appointments'],
+                        'No-show rate': f"{values['no_show_rate']:.1%}",
+                    })
+        st.dataframe(pd.DataFrame(health_rows), hide_index=True, width='stretch')
     except (OSError, KeyError, json.JSONDecodeError) as exc:
         st.error(f'Generated insights are unavailable: {exc}')
     st.markdown("---")
